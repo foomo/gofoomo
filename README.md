@@ -24,7 +24,7 @@ Go or php? It is up to you, to decide which tool provides better solutions for y
 
 ## Hijacking json rpc calls
 
-Gofoomo lets you intercept and implement calls to foomo json rpc services. In addition Foomo.Go gives you an infrastructure to generate golang structs for php value objects.
+Gofoomo lets you intercept and implement calls to foomo json rpc services. In addition [Foomo.Go](https://github.com/foomo/Foomo.Go) gives you an infrastructure to generate golang structs for php value objects.
 
 ## Access foomo configurations
 
