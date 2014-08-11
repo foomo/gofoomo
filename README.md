@@ -2,21 +2,21 @@
 
 Gofoomo lets you use Go in your foomo project. It also lets you use php in your Go project.
 
-We want to use Go, but it is not the right language for a everyone, who is using php. Php´s save and reload work cycle in combination with it´s dynamic character is a great fit especially when doing frontend work.
+We want to use Go, but it is not the right language for everyone, who is using php. Php´s save and reload work cycle in combination with it´s dynamic character is a great fit especially when doing frontend work.
 
 ## Complementing your LAMP stack
 
 Go is a much younger and cleaner stack than LAMP.
 
-	- Serve static files without bugging your prefork apache
-	- Keep slow connections away from your php processes (not implemented yet)
-	- Hijack foomo json rpc services methods
-	- Your code is also running the server, this puts you in a place, where	you can solve problems, that you can not solve in php
-	- Go´s runtime model is pretty much the opposite of the php runtime model
-		- all requests vs one request per lifetime
-		- shared memory vs process and memory isolation
-		- one bug to kill them all vs one bug kills one request
-		- hard, but fast vs easy but slow
+* Serve static files without bugging your prefork apache
+* Keep slow connections away from your php processes (not implemented yet)
+* Hijack foomo json rpc services methods
+* Your code is also running the server, this puts you in a place, where	you can solve problems, that you can not solve in php
+* Go´s runtime model is pretty much the opposite of the php runtime model
+	* all requests vs one request per lifetime
+	* shared memory vs process and memory isolation
+	* one bug to kill them all vs one bug kills one request
+	* hard, but fast vs easy but slow
 
 ## Sitting in front of your foomo LAMP app with Go
 
