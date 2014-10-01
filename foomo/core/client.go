@@ -2,6 +2,7 @@ package core
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/foomo/gofoomo/foomo"
 	"io/ioutil"
 	"net/http"
@@ -15,6 +16,9 @@ func get(foomo *foomo.Foomo, path ...string) (data []byte, err error) {
 		encodedPath += "/" + url.QueryEscape(pathEntry)
 	}
 	resp, err := http.Get(callUrl + "/foomo/core.php" + encodedPath)
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New("unfriendly answer " + resp.Status)
+	}
 	if err == nil {
 		// handle error
 		defer resp.Body.Close()
