@@ -8,6 +8,8 @@ import (
 	"strings"
 )
 
+const shaPrefix = "{SHA}"
+
 type Foomo struct {
 	Root                 string
 	RunMode              string
@@ -34,8 +36,19 @@ func makeFoomo(foomoDir string, runMode string, url string, init bool) (foomo *F
 	return f, err
 }
 
+func (f *Foomo) BasicAuth(domain string, user string, password string) bool {
+	for _, line := range strings.Split(f.getBasicAuthFileContentsForDomain(domain), "\n") {
+		lineParts := strings.Split(line, ":")
+		if len(lineParts) == 2 && lineParts[0] == user {
+			hash := getBasicAuthHash(password)
+			return hash == lineParts[1]
+		}
+	}
+	return false
+}
+
 func (f *Foomo) getBasicAuthFileContentsForDomain(domain string) string {
-	basicAuthFilename := f.GetBasicAuthFilename("default")
+	basicAuthFilename := f.GetBasicAuthFilename(domain)
 	bytes, err := ioutil.ReadFile(basicAuthFilename)
 	if err != nil {
 		return ""
@@ -57,16 +70,19 @@ LineLoop:
 		lineParts := strings.Split(line, ":")
 		if len(lineParts) == 2 && lineParts[0] == user {
 			continue LineLoop
-		} else {
+		} else if len(line) > 0 {
 			newLines = append(newLines, line)
 		}
 	}
+	newLines = append(newLines, user+":"+getBasicAuthHash(password))
+	return strings.Join(newLines, "\n")
+}
 
+func getBasicAuthHash(password string) string {
 	s := sha1.New()
 	s.Write([]byte(password))
 	passwordSum := []byte(s.Sum(nil))
-	newLines = append(newLines, user+":{SHA}"+base64.StdEncoding.EncodeToString(passwordSum))
-	return strings.Join(newLines, "\n")
+	return shaPrefix + base64.StdEncoding.EncodeToString(passwordSum)
 }
 
 func (f *Foomo) GetURLWithCredentialsForDefaultBasicAuthDomain() string {
