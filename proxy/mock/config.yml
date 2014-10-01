@@ -1,0 +1,11 @@
+server:
+  address: 0.0.0.0:80
+  tls:
+    address: 0.0.0.0:443
+    certfile: /foo.cert
+    keyfile: /foo.key
+foomo:
+  runmode: test
+  dir: /var/www/foomo
+appoptions:
+  foo: Bar
