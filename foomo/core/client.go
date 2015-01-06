@@ -16,6 +16,9 @@ func get(foomo *foomo.Foomo, path ...string) (data []byte, err error) {
 		encodedPath += "/" + url.QueryEscape(pathEntry)
 	}
 	resp, err := http.Get(callUrl + "/foomo/core.php" + encodedPath)
+	if err != nil {
+		return nil, err
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.New("unfriendly answer " + resp.Status)
 	}

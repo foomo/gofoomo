@@ -59,7 +59,7 @@ func (r *RPC) HandlesRequest(incomingRequest *http.Request) bool {
 
 func (r *RPC) callServiceObjectWithHTTPRequest(incomingRequest *http.Request) (reply *rpc.MethodReply) {
 	reply = &rpc.MethodReply{}
-	path := incomingRequest.URL.Path
+	path := incomingRequest.RequestURI
 	argumentMap := extractPostData(incomingRequest)
 	methodName := r.getMethodFromPath(path)
 	arguments := r.extractArguments(path)
@@ -89,7 +89,11 @@ func extractPostData(incomingRequest *http.Request) map[string]interface{} {
 	if err != nil {
 		panic(err)
 	}
-	return jsonDecode(body).(map[string]interface{})
+	if len(body) > 0 {
+		return jsonDecode(body).(map[string]interface{})
+	} else {
+		return make(map[string]interface{})
+	}
 }
 
 func jsonDecode(jsonData []byte) (data interface{}) {

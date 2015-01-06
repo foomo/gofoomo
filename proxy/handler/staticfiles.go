@@ -27,7 +27,11 @@ func (files *StaticFiles) HandlesRequest(incomingRequest *http.Request) bool {
 		parts := strings.Split(incomingRequest.URL.Path, "/")
 		if len(parts) > 3 {
 			moduleNameParts := strings.Split(parts[3], "-")
-			return fileExists(files.foomo.GetModuleHtdocsDir(moduleNameParts[0]) + "/" + strings.Join(parts[4:], "/"))
+			if strings.HasSuffix(parts[len(parts)-1], ".php") {
+				return false
+			} else {
+				return fileExists(files.foomo.GetModuleHtdocsDir(moduleNameParts[0]) + "/" + strings.Join(parts[4:], "/"))
+			}
 		} else {
 			return false
 		}
