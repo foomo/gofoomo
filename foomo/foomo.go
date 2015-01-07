@@ -107,6 +107,10 @@ func (f *Foomo) GetModuleHtdocsDir(moduleName string) string {
 	return f.GetModuleDir(moduleName, "htdocs")
 }
 
+func (f *Foomo) GetModuleCacheDir(moduleName string) string {
+	return f.GetVarDir() + "/cache/" + moduleName
+}
+
 func (f *Foomo) GetModuleHtdocsVarDir(moduleName string) string {
 	return f.GetVarDir() + "/htdocs/modulesVar/" + moduleName
 }

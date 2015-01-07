@@ -3,14 +3,16 @@ package images
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 )
 
 const (
-	DefaultScreenWidth  = 1024
-	DefaultScreenHeight = 768
-	DefaultPixelRatio   = 1.0
+	DefaultScreenWidth             = 1024
+	DefaultScreenHeight            = 768
+	DefaultPixelRatio              = 1.0
+	FoomoMediaClientInfoCookieName = "foomoMediaClientInfo"
 )
 
 type ClientInfo struct {
@@ -21,13 +23,13 @@ type ClientInfo struct {
 
 func NewClientInfo() *ClientInfo {
 	info := new(ClientInfo)
-	info.screenWidth = DEFAULT_SCREEN_WIDTH
-	info.screenHeight = DEFAULT_SCREEN_HEIGHT
-	info.pixelRatio = DEFAULT_PIXEL_RATIO
+	info.screenWidth = DefaultScreenWidth
+	info.screenHeight = DefaultScreenHeight
+	info.pixelRatio = DefaultPixelRatio
 	return info
 }
 
-func ReadFoomoMediaClientInfo(cookie string) (clientInfo *ClientInfo, err error) {
+func readFoomoMediaClientInfo(cookie string) (clientInfo *ClientInfo, err error) {
 	// screenWidthxscreenHeight@pixelRatio
 	parts := strings.Split(cookie, "@")
 	if len(parts) != 2 {
@@ -47,7 +49,7 @@ func ReadFoomoMediaClientInfo(cookie string) (clientInfo *ClientInfo, err error)
 	}
 }
 
-func ClampScreenWidthToGrid(screenWidth int64, breakPoints []int64) int64 {
+func clampScreenWidthToGrid(screenWidth int64, breakPoints []int64) int64 {
 	// the last breakpoint
 	distance := breakPoints[len(breakPoints)-1]
 	clampedValue := distance
@@ -62,4 +64,36 @@ func ClampScreenWidthToGrid(screenWidth int64, breakPoints []int64) int64 {
 		}
 	}
 	return clampedValue
+}
+
+func getFoomoMediaClientInfoCookie(incomingCookies []*http.Cookie, breakPoints []int64) *http.Cookie {
+	clientInfo := NewClientInfo()
+	clientInfoCookie := getCookieByName(incomingCookies, FoomoMediaClientInfoCookieName)
+	if clientInfoCookie != nil {
+		cookieClientInfo, cookieReadError := readFoomoMediaClientInfo(clientInfoCookie.Value)
+		if cookieReadError == nil {
+			clientInfo = cookieClientInfo
+		}
+	}
+	pixelRatio := clientInfo.pixelRatio
+	if pixelRatio > 1.5 {
+		pixelRatio = 2.0
+	} else {
+		pixelRatio = 1.0
+	}
+	cookieValue := fmt.Sprintf("%dx%d@%f", clampScreenWidthToGrid(clientInfo.screenWidth, breakPoints), 1000, pixelRatio)
+	cookie := &http.Cookie{
+		Name:  FoomoMediaClientInfoCookieName,
+		Value: cookieValue,
+	}
+	return cookie
+}
+
+func getCookieByName(cookies []*http.Cookie, name string) (cookie *http.Cookie) {
+	for _, cookie := range cookies {
+		if cookie.Name == name {
+			return cookie
+		}
+	}
+	return nil
 }
