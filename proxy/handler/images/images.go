@@ -1,13 +1,13 @@
 package images
 
 import (
+	"errors"
 	"github.com/foomo/gofoomo/foomo"
 	"io"
-	"log"
+	//"log"
 	"net/http"
 	"os"
 	"strings"
-	"time"
 )
 
 type Adaptive struct {
@@ -34,18 +34,40 @@ func (a *Adaptive) HandlesRequest(incomingRequest *http.Request) bool {
 }
 
 func (a *Adaptive) ServeHTTP(w http.ResponseWriter, incomingRequest *http.Request) {
-	file := a.Cache.Get(incomingRequest, a.BreakPoints)
-	i, err := os.Stat(file.Name())
-	log.Println("i, err", i, err)
-	if file == nil {
-		// dummy image
-		w.Write([]byte("WTF"))
+	info := a.Cache.Get(incomingRequest, a.BreakPoints)
+	if info == nil {
+		panic(errors.New("could not get image"))
 	} else {
-		io.Copy(w, file)
-		defer file.Close()
+		// 304
+
+		browserEtag := incomingRequest.Header.Get("If-None-Match")
+
+		if browserEtag == info.Etag {
+			w.WriteHeader(http.StatusNotModified)
+			writeHeaders(w, info)
+		} else {
+			writeHeaders(w, info)
+			file, err := os.Open(info.Filename)
+			if err != nil {
+				// dummy image ?!
+				panic(errors.New("could not open image file " + info.Filename + " " + err.Error()))
+			} else {
+				io.Copy(w, file)
+				defer file.Close()
+
+			}
+		}
 	}
 }
 
-func getExpiresFormattedTime() string {
-	return time.Now().AddDate(0, 0, 2).Format("Mon, 02 Jan 2006 15:04:05 MST")
+func writeHeaders(w http.ResponseWriter, info *ImageInfo) {
+	for key, values := range info.Header {
+		if key == "Set-Cookie" {
+			continue
+		}
+		for _, value := range values {
+			w.Header().Add(key, value)
+		}
+	}
+
 }
