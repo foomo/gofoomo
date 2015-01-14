@@ -16,11 +16,11 @@ type Adaptive struct {
 	Cache       *Cache
 }
 
-func NewAdaptive(paths []string, breakPoints []int64, f *foomo.Foomo) *Adaptive {
+func NewAdaptive(paths []string, f *foomo.Foomo) *Adaptive {
 	a := new(Adaptive)
 	a.Paths = paths
 	a.Cache = NewCache(f)
-	a.BreakPoints = breakPoints
+	a.BreakPoints = getBreakPoints(f)
 	return a
 }
 

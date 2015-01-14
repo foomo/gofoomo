@@ -48,6 +48,7 @@ func fileExists(filename string) bool {
 }
 
 func (files *StaticFiles) ServeHTTP(w http.ResponseWriter, incomingRequest *http.Request) {
+
 	parts := strings.Split(incomingRequest.URL.Path, "/")
 	path := strings.Join(parts[4:], "/")
 	moduleNameParts := strings.Split(parts[3], "-")

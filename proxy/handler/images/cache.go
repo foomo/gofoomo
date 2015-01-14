@@ -24,7 +24,6 @@ func NewImageInfo(response *http.Response) *ImageInfo {
 		i.StatusCode = response.StatusCode
 		i.Header = response.Header
 	}
-	log.Println(response)
 	return i
 }
 
@@ -36,11 +35,38 @@ func (i *ImageInfo) getHeader(name string) []string {
 	return h
 }
 
+type ImageRequest struct {
+	Id                         string
+	IncomingRequest            *http.Request
+	FoomoMediaClientInfoCookie *http.Cookie
+	DoneChannel                chan *ImageInfo
+	ImageInfo                  *ImageInfo
+}
+
+func NewImageRequest(id string, incomingRequest *http.Request, foomoMediaClientInfoCookie *http.Cookie) *ImageRequest {
+	r := new(ImageRequest)
+	r.Id = id
+	r.DoneChannel = make(chan *ImageInfo)
+	r.IncomingRequest = incomingRequest
+	r.FoomoMediaClientInfoCookie = foomoMediaClientInfoCookie
+	return r
+}
+
+func (i *ImageRequest) execute(cache *Cache) {
+	cache.RequestChannel <- i
+	i.ImageInfo = <-i.DoneChannel
+
+}
+
 type Cache struct {
-	Directory          map[string]*ImageInfo
-	Foomo              *foomo.Foomo
-	foomoSessionCookie *http.Cookie
-	client             *http.Client
+	Directory              map[string]*ImageInfo
+	Foomo                  *foomo.Foomo
+	foomoSessionCookie     *http.Cookie
+	foomoSessionCookieName string
+	client                 *http.Client
+	RequestChannel         chan *ImageRequest
+
+	//doneChannel        chan *ImageRequest
 }
 
 func NewCache(f *foomo.Foomo) *Cache {
@@ -48,14 +74,47 @@ func NewCache(f *foomo.Foomo) *Cache {
 	c.Foomo = f
 	c.Directory = make(map[string]*ImageInfo)
 	c.client = http.DefaultClient
+	c.foomoSessionCookieName = getFoomoSessionCookieName(f)
+	c.RequestChannel = make(chan *ImageRequest)
+	//c.doneChannel = make(chan *ImageInfo)
+	go c.runLoop()
 	return c
+}
+
+func (c *Cache) runLoop() {
+	pendingRequests := make(map[string][]*ImageRequest)
+	doneChannel := make(chan *ImageRequest)
+	for {
+		select {
+		case r := <-c.RequestChannel:
+			// incoming request
+			_, ok := pendingRequests[r.Id]
+			if !ok {
+				// that is a new one
+				pendingRequests[r.Id] = []*ImageRequest{}
+				go func() {
+					r.ImageInfo = c.getImage(r.IncomingRequest, r.FoomoMediaClientInfoCookie)
+					doneChannel <- r
+				}()
+			} else {
+				log.Println("hang on")
+			}
+			pendingRequests[r.Id] = append(pendingRequests[r.Id], r)
+		case done := <-doneChannel:
+			requests, _ := pendingRequests[done.Id]
+			for _, r := range requests {
+				r.DoneChannel <- done.ImageInfo
+			}
+			delete(pendingRequests, done.Id)
+		}
+	}
+
 }
 
 func (c *Cache) Get(request *http.Request, breakPoints []int64) *ImageInfo {
 	cookie := getFoomoMediaClientInfoCookie(request.Cookies(), breakPoints)
 	key := cookie.String() + ":" + request.URL.Path
 	info, ok := c.Directory[key]
-
 	if ok && time.Now().Unix() > info.Expires {
 		log.Println("that image expired - getting a new one", info.Expires, time.Now())
 		ok = false
@@ -63,7 +122,9 @@ func (c *Cache) Get(request *http.Request, breakPoints []int64) *ImageInfo {
 		delete(c.Directory, key)
 	}
 	if ok == false {
-		info = c.getImage(request, cookie)
+		imageRequest := NewImageRequest(key, request, cookie)
+		imageRequest.execute(c)
+		info = imageRequest.ImageInfo
 		if len(info.Etag) > 0 {
 			info.Filename = c.Foomo.GetModuleCacheDir("Foomo.Media") + "/img-" + info.Etag
 			if fileExists(info.Filename) {
@@ -82,7 +143,7 @@ func fileExists(filename string) bool {
 }
 
 func (c *Cache) checkFoomoSessionCookie(res *http.Response) {
-	sessionCookie := getCookieByName(res.Cookies(), "foomoSessionTest")
+	sessionCookie := getCookieByName(res.Cookies(), c.foomoSessionCookieName)
 	if sessionCookie != nil {
 		if c.foomoSessionCookie == nil || (c.foomoSessionCookie != nil && c.foomoSessionCookie.Value != sessionCookie.Value) {
 			log.Println("images.CheckFoomoSessionCookie: we have a session cookie", sessionCookie)
@@ -96,7 +157,6 @@ func (c *Cache) getImage(incomingRequest *http.Request, foomoMediaClientInfoCook
 	if err != nil {
 		return NewImageInfo(nil)
 	} else {
-		log.Println("requesting ", request.URL.String(), foomoMediaClientInfoCookie.String())
 		request.AddCookie(foomoMediaClientInfoCookie)
 		if c.foomoSessionCookie != nil {
 			request.AddCookie(c.foomoSessionCookie)
@@ -126,7 +186,7 @@ func (c *Cache) getImage(incomingRequest *http.Request, foomoMediaClientInfoCook
 				} else {
 					i.Expires = 0
 					i.Expires = time.Now().Unix() + 3600
-					log.Println("coul not parse expiration time", timeErr)
+					log.Println("could not parse expiration time", timeErr)
 				}
 				if err != nil {
 					panic(errors.New("unexpected error " + err.Error()))

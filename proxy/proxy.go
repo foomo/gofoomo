@@ -16,7 +16,7 @@ type Handler interface {
 
 type Proxy struct {
 	foomo        *foomo.Foomo
-	reverseProxy *httputil.ReverseProxy
+	ReverseProxy *httputil.ReverseProxy
 	handlers     []Handler
 	auth         *Auth
 }
@@ -30,7 +30,7 @@ type ProxyServer struct {
 func NewProxy(f *foomo.Foomo) *Proxy {
 	proxy := new(Proxy)
 	proxy.foomo = f
-	proxy.reverseProxy = httputil.NewSingleHostReverseProxy(proxy.foomo.URL)
+	proxy.ReverseProxy = httputil.NewSingleHostReverseProxy(proxy.foomo.URL)
 	return proxy
 }
 
@@ -73,8 +73,8 @@ func (proxy *Proxy) ServeHTTP(w http.ResponseWriter, incomingRequest *http.Reque
 		}
 	}
 	incomingRequest.Host = proxy.foomo.URL.Host
-	incomingRequest.URL.Opaque = incomingRequest.RequestURI
-	proxy.reverseProxy.ServeHTTP(w, incomingRequest)
+	// incomingRequest.URL.Opaque = incomingRequest.RequestURI + incomingRequest.
+	proxy.ReverseProxy.ServeHTTP(w, incomingRequest)
 }
 
 func (proxy *Proxy) AddHandler(handler Handler) {
@@ -106,12 +106,14 @@ func (p *ProxyServer) ListenAndServe() error {
 	c := p.Config.Server
 	errorChan := make(chan error)
 	if len(c.TLS.CertFile) > 0 && len(c.TLS.KeyFile) > 0 {
+		log.Println("listening for https on", c.TLS.Address)
 		go func() {
 			errorChan <- http.ListenAndServeTLS(c.TLS.Address, c.TLS.CertFile, c.TLS.KeyFile, p.Proxy)
 
 		}()
 	}
 	if len(c.Address) > 0 {
+		log.Println("listening for http on", c.Address)
 		go func() {
 			errorChan <- http.ListenAndServe(c.Address, p.Proxy)
 		}()
