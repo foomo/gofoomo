@@ -43,7 +43,7 @@ func (proxy *Proxy) ServeHTTP(w http.ResponseWriter, incomingRequest *http.Reque
 		return
 	}
 	for _, listener := range proxy.listeners {
-		w = listener.ListenHTTPServeStart(w, incomingRequest)
+		w = listener.ListenServeHTTPStart(w, incomingRequest)
 	}
 	for _, handler := range proxy.handlers {
 		if handler.HandlesRequest(incomingRequest) {
@@ -56,7 +56,7 @@ func (proxy *Proxy) ServeHTTP(w http.ResponseWriter, incomingRequest *http.Reque
 	proxy.ReverseProxy.ServeHTTP(w, incomingRequest)
 
 	for _, listener := range proxy.listeners {
-		listener.ListenHTTPServeDone(w, incomingRequest)
+		listener.ListenServeHTTPDone(w, incomingRequest)
 	}
 
 }
