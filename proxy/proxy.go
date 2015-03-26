@@ -1,12 +1,10 @@
 package proxy
 
 import (
-	"encoding/base64"
 	"github.com/foomo/gofoomo/foomo"
 	"log"
 	"net/http"
 	"net/http/httputil"
-	"strings"
 )
 
 type Handler interface {
@@ -14,10 +12,16 @@ type Handler interface {
 	ServeHTTP(w http.ResponseWriter, incomingRequest *http.Request)
 }
 
+type Listener interface {
+	ListenServeHTTPStart(w http.ResponseWriter, incomingRequest *http.Request) *http.ResponseWriter
+	ListenServeHTTPDone(w http.ResponseWriter, incomingRequest *http.Request)
+}
+
 type Proxy struct {
 	foomo        *foomo.Foomo
 	ReverseProxy *httputil.ReverseProxy
 	handlers     []Handler
+	listeners    []Listener
 	auth         *Auth
 }
 
@@ -34,37 +38,12 @@ func NewProxy(f *foomo.Foomo) *Proxy {
 	return proxy
 }
 
-func (proxy *Proxy) forbidden(w http.ResponseWriter) {
-	realm := strings.Replace(proxy.auth.Realm, "\"", "'", -1)
-	w.Header().Set("Www-Authenticate", "Basic realm=\""+realm+"\"") //, encoding=\"UTF-8\"")
-	w.WriteHeader(http.StatusUnauthorized)
-	w.Write([]byte("access denied"))
-
-}
-
 func (proxy *Proxy) ServeHTTP(w http.ResponseWriter, incomingRequest *http.Request) {
-	if proxy.auth != nil && len(proxy.auth.Domain) > 0 {
-		authHeader := incomingRequest.Header.Get("Authorization")
-		if len(authHeader) == 0 {
-			proxy.forbidden(w)
-			return
-		}
-		auth, base64DecodingErr := base64.StdEncoding.DecodeString(strings.TrimPrefix(authHeader, "Basic "))
-		if base64DecodingErr != nil {
-			proxy.forbidden(w)
-			return
-		}
-		authParts := strings.Split(string(auth), ":")
-		if len(authParts) != 2 {
-			log.Println(string(auth), authParts, incomingRequest.Header)
-			//panic(errors.New("malformed basic auth"))
-			proxy.forbidden(w)
-			return
-		}
-		if !proxy.foomo.BasicAuth(proxy.auth.Domain, authParts[0], authParts[1]) {
-			proxy.forbidden(w)
-			return
-		}
+	if proxy.auth != nil && len(proxy.auth.Domain) > 0 && !proxy.foomo.BasicAuthForRequest(w, incomingRequest, proxy.auth.Domain, proxy.auth.Realm, "access denied") {
+		return
+	}
+	for _, listener := range proxy.listeners {
+		w = listener.ListenHTTPServeStart(w, incomingRequest)
 	}
 	for _, handler := range proxy.handlers {
 		if handler.HandlesRequest(incomingRequest) {
@@ -75,10 +54,19 @@ func (proxy *Proxy) ServeHTTP(w http.ResponseWriter, incomingRequest *http.Reque
 	incomingRequest.Host = proxy.foomo.URL.Host
 	// incomingRequest.URL.Opaque = incomingRequest.RequestURI + incomingRequest.
 	proxy.ReverseProxy.ServeHTTP(w, incomingRequest)
+
+	for _, listener := range proxy.listeners {
+		listener.ListenHTTPServeDone(w, incomingRequest)
+	}
+
 }
 
 func (proxy *Proxy) AddHandler(handler Handler) {
 	proxy.handlers = append(proxy.handlers, handler)
+}
+
+func (proxy *Proxy) AddListener(listener Listener) {
+	proxy.listeners = append(proxy.listeners, listener)
 }
 
 func NewProxyServerWithConfig(filename string) (p *ProxyServer, err error) {
@@ -109,7 +97,6 @@ func (p *ProxyServer) ListenAndServe() error {
 		log.Println("listening for https on", c.TLS.Address)
 		go func() {
 			errorChan <- http.ListenAndServeTLS(c.TLS.Address, c.TLS.CertFile, c.TLS.KeyFile, p.Proxy)
-
 		}()
 	}
 	if len(c.Address) > 0 {

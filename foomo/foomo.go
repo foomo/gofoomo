@@ -4,6 +4,7 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"io/ioutil"
+	"net/http"
 	u "net/url"
 	"strings"
 )
@@ -45,6 +46,33 @@ func (f *Foomo) BasicAuth(domain string, user string, password string) bool {
 		}
 	}
 	return false
+}
+
+func (f *Foomo) BasicAuthForRequest(w http.ResponseWriter, incomingRequest *http.Request, domain string, realm string, denialHTML string) bool {
+	forbidden := func() bool {
+		realm := strings.Replace(realm, "\"", "'", -1)
+		w.Header().Set("Www-Authenticate", "Basic realm=\""+realm+"\"")
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(denialHTML))
+		return false
+	}
+	authHeader := incomingRequest.Header.Get("Authorization")
+	if len(authHeader) == 0 {
+		return forbidden()
+	}
+	auth, base64DecodingErr := base64.StdEncoding.DecodeString(strings.TrimPrefix(authHeader, "Basic "))
+	if base64DecodingErr != nil {
+		return forbidden()
+	}
+	authParts := strings.Split(string(auth), ":")
+	if len(authParts) != 2 {
+		return forbidden()
+	}
+	if f.BasicAuth(domain, authParts[0], authParts[1]) {
+		return true
+	} else {
+		return forbidden()
+	}
 }
 
 func (f *Foomo) getBasicAuthFileContentsForDomain(domain string) string {
