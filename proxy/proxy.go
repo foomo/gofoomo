@@ -13,7 +13,7 @@ type Handler interface {
 }
 
 type Listener interface {
-	ListenServeHTTPStart(w http.ResponseWriter, incomingRequest *http.Request) *http.ResponseWriter
+	ListenServeHTTPStart(w http.ResponseWriter, incomingRequest *http.Request) http.ResponseWriter
 	ListenServeHTTPDone(w http.ResponseWriter, incomingRequest *http.Request)
 }
 
