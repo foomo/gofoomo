@@ -1,9 +1,10 @@
 package handler
 
 import (
-	"compress/gzip"
 	"encoding/json"
+	"github.com/foomo/gofoomo/proxy/utils"
 	"github.com/foomo/gofoomo/rpc"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -117,13 +118,13 @@ func jsonEncode(data interface{}) []byte {
 
 func (r *RPC) ServeHTTP(w http.ResponseWriter, incomingRequest *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+
 	response := r.callServiceObjectWithHTTPRequest(incomingRequest)
-	if strings.Contains(incomingRequest.Header.Get("Accept-Encoding"), "gzip") {
-		w.Header().Set("Content-Encoding", "gzip")
-		gz := gzip.NewWriter(w)
-		json.NewEncoder(gz).Encode(response)
-		gz.Close()
-	} else {
-		w.Write(jsonEncode(response))
+
+	err := utils.ServeCompressed(w, incomingRequest, func(writer io.Writer) error {
+		return json.NewEncoder(writer).Encode(response)
+	})
+	if err != nil {
+		panic(err)
 	}
 }

@@ -32,8 +32,9 @@ type ProxyServer struct {
 }
 
 func NewProxy(f *foomo.Foomo) *Proxy {
-	proxy := new(Proxy)
-	proxy.foomo = f
+	proxy := &Proxy{
+		foomo: f,
+	}
 	proxy.ReverseProxy = httputil.NewSingleHostReverseProxy(proxy.foomo.URL)
 	return proxy
 }

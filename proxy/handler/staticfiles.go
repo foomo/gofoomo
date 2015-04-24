@@ -2,10 +2,11 @@ package handler
 
 import (
 	"github.com/foomo/gofoomo/foomo"
-	"io"
+	"github.com/foomo/gofoomo/proxy/utils"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 )
 
 // Handles serving static files from the local file system. It knows about
@@ -47,6 +48,13 @@ func fileExists(filename string) bool {
 	return err == nil
 }
 
+func panicOnErr(err error) {
+	if err != nil {
+		panic(err)
+	}
+
+}
+
 func (files *StaticFiles) ServeHTTP(w http.ResponseWriter, incomingRequest *http.Request) {
 
 	parts := strings.Split(incomingRequest.URL.Path, "/")
@@ -60,33 +68,54 @@ func (files *StaticFiles) ServeHTTP(w http.ResponseWriter, incomingRequest *http
 		moduleDir = files.foomo.GetModuleHtdocsVarDir(moduleName)
 	}
 	f, err := os.Open(moduleDir + "/" + path)
-	if err != nil {
-		panic(err)
-	} else {
-		defer f.Close()
-		w.Header().Set("Content-Type", getContentType(path))
-		io.Copy(w, f)
+	panicOnErr(err)
+	defer f.Close()
+	_, compress := getContentType(path)
+	//w.Header().Set("Content-Type", mime)
+	fileInfo, err := f.Stat()
+	panicOnErr(err)
+	//const TimeFormat = "Mon, 02 Jan 2006 15:04:05 GMT"
+	w.Header().Set("Expires", time.Now().Add(time.Hour*24*365).Format(http.TimeFormat))
+	if compress && strings.Contains(incomingRequest.Header.Get("Accept-Encoding"), "gzip") {
+		w.Header().Set("Content-Encoding", "gzip")
+		crw := utils.NewCompressedResponseWriter(w)
+		defer crw.Close()
+		w = crw
 	}
+
+	http.ServeContent(w, incomingRequest, f.Name(), fileInfo.ModTime(), f)
+	/*	if compress {
+			err := utils.ServeCompressed(w, incomingRequest, func(writer io.Writer) error {
+				_, err := io.Copy(writer, f)
+				return err
+			})
+			panicOnErr(err)
+		} else {
+			_, err := io.Copy(w, f)
+			panicOnErr(err)
+		}
+	*/
+
 }
 
-func getContentType(path string) string {
+func getContentType(path string) (string, bool) {
 	if strings.HasSuffix(path, ".png") {
-		return "image/png"
+		return "image/png", false
 	} else if strings.HasSuffix(path, ".jpg") {
-		return "image/jpeg"
+		return "image/jpeg", false
 	} else if strings.HasSuffix(path, ".jpeg") {
-		return "image/jpeg"
+		return "image/jpeg", false
 	} else if strings.HasSuffix(path, ".gif") {
-		return "image/gif"
+		return "image/gif", false
 	} else if strings.HasSuffix(path, ".css") {
-		return "text/css"
+		return "text/css", true
 	} else if strings.HasSuffix(path, ".js") {
-		return "application/javascript"
+		return "application/javascript", true
 	} else if strings.HasSuffix(path, ".html") {
-		return "text/html"
+		return "text/html", true
 	} else if strings.HasSuffix(path, ".") {
-		return ""
+		return "", false
 	} else {
-		return "octet/stream"
+		return "octet/stream", false
 	}
 }
