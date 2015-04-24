@@ -18,7 +18,10 @@ type SessionConfig struct {
 func getBreakPoints(f *foomo.Foomo) []int64 {
 	c := &MediaServerConfig{}
 
-	core.GetConfig(f, &c, "Foomo.Media", "Foomo.Media.Image.server", "")
+	err := core.GetConfig(f, &c, "Foomo.Media", "Foomo.Media.Image.server", "")
+	if err != nil {
+		panic(err)
+	}
 	breakPointsInt := []int{}
 
 	for breakPointString, _ := range c.Grid {

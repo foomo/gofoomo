@@ -35,27 +35,33 @@ func (i *ImageInfo) getHeader(name string) []string {
 	return h
 }
 
+type ImageRequestResult struct {
+	Error   error
+	Request *ImageRequest
+}
+
 type ImageRequest struct {
 	Id                         string
 	IncomingRequest            *http.Request
 	FoomoMediaClientInfoCookie *http.Cookie
-	DoneChannel                chan *ImageInfo
+	DoneChannel                chan *ImageRequestResult
 	ImageInfo                  *ImageInfo
 }
 
 func NewImageRequest(id string, incomingRequest *http.Request, foomoMediaClientInfoCookie *http.Cookie) *ImageRequest {
 	r := new(ImageRequest)
 	r.Id = id
-	r.DoneChannel = make(chan *ImageInfo)
+	r.DoneChannel = make(chan *ImageRequestResult)
 	r.IncomingRequest = incomingRequest
 	r.FoomoMediaClientInfoCookie = foomoMediaClientInfoCookie
 	return r
 }
 
-func (i *ImageRequest) execute(cache *Cache) {
+func (i *ImageRequest) execute(cache *Cache) error {
 	cache.RequestChannel <- i
-	i.ImageInfo = <-i.DoneChannel
-
+	result := <-i.DoneChannel
+	i.ImageInfo = result.Request.ImageInfo
+	return result.Error
 }
 
 type Cache struct {
@@ -83,7 +89,7 @@ func NewCache(f *foomo.Foomo) *Cache {
 
 func (c *Cache) runLoop() {
 	pendingRequests := make(map[string][]*ImageRequest)
-	doneChannel := make(chan *ImageRequest)
+	doneChannel := make(chan *ImageRequestResult)
 	for {
 		select {
 		case r := <-c.RequestChannel:
@@ -93,25 +99,33 @@ func (c *Cache) runLoop() {
 				// that is a new one
 				pendingRequests[r.Id] = []*ImageRequest{}
 				go func() {
-					r.ImageInfo = c.getImage(r.IncomingRequest, r.FoomoMediaClientInfoCookie)
-					doneChannel <- r
+					info, err := c.getImage(r.IncomingRequest, r.FoomoMediaClientInfoCookie)
+					r.ImageInfo = info
+					doneChannel <- &ImageRequestResult{
+						Request: r,
+						Error:   err,
+					}
 				}()
 			} else {
 				log.Println("hang on")
 			}
 			pendingRequests[r.Id] = append(pendingRequests[r.Id], r)
-		case done := <-doneChannel:
-			requests, _ := pendingRequests[done.Id]
+		case result := <-doneChannel:
+			requests, _ := pendingRequests[result.Request.Id]
 			for _, r := range requests {
-				r.DoneChannel <- done.ImageInfo
+				r.DoneChannel <- &ImageRequestResult{
+					Request: r,
+					Error:   result.Error,
+				}
 			}
-			delete(pendingRequests, done.Id)
+			delete(pendingRequests, result.Request.Id)
 		}
 	}
 
 }
 
-func (c *Cache) Get(request *http.Request, breakPoints []int64) *ImageInfo {
+func (c *Cache) Get(request *http.Request, breakPoints []int64) (info *ImageInfo, err error) {
+
 	cookie := getFoomoMediaClientInfoCookie(request.Cookies(), breakPoints)
 	key := cookie.String() + ":" + request.URL.Path
 	info, ok := c.Directory[key]
@@ -123,18 +137,21 @@ func (c *Cache) Get(request *http.Request, breakPoints []int64) *ImageInfo {
 	}
 	if ok == false {
 		imageRequest := NewImageRequest(key, request, cookie)
-		imageRequest.execute(c)
+		err := imageRequest.execute(c)
+		if err != nil {
+			return nil, err
+		}
 		info = imageRequest.ImageInfo
 		if len(info.Etag) > 0 {
 			info.Filename = c.Foomo.GetModuleCacheDir("Foomo.Media") + "/img-" + info.Etag
 			if fileExists(info.Filename) {
 				c.Directory[key] = info
 			} else {
-				return nil
+				return nil, err
 			}
 		}
 	}
-	return info
+	return info, err
 }
 
 func fileExists(filename string) bool {
@@ -152,10 +169,11 @@ func (c *Cache) checkFoomoSessionCookie(res *http.Response) {
 	}
 }
 
-func (c *Cache) getImage(incomingRequest *http.Request, foomoMediaClientInfoCookie *http.Cookie) *ImageInfo {
+func (c *Cache) getImage(incomingRequest *http.Request, foomoMediaClientInfoCookie *http.Cookie) (i *ImageInfo, err error) {
 	request, err := http.NewRequest("HEAD", incomingRequest.URL.String(), nil)
+
 	if err != nil {
-		return NewImageInfo(nil)
+		return NewImageInfo(nil), err
 	} else {
 		request.AddCookie(foomoMediaClientInfoCookie)
 		if c.foomoSessionCookie != nil {
@@ -171,11 +189,12 @@ func (c *Cache) getImage(incomingRequest *http.Request, foomoMediaClientInfoCook
 		}
 		if err != nil {
 			if imageServerResponse != nil && imageServerResponse.StatusCode == http.StatusMovedPermanently {
-				panic(errors.New("unexpected redirect"))
+				return nil, errors.New("unexpected redirect")
 			} else {
-				panic(errors.New("unexpected error " + err.Error()))
+				return nil, errors.New("unexpected error " + err.Error())
 			}
 		} else {
+
 			i.StatusCode = imageServerResponse.StatusCode
 			c.checkFoomoSessionCookie(imageServerResponse)
 			switch i.StatusCode {
@@ -193,10 +212,11 @@ func (c *Cache) getImage(incomingRequest *http.Request, foomoMediaClientInfoCook
 				} else {
 					i.Etag = imageServerResponse.Header.Get("Etag")
 				}
+
 			default:
-				panic(errors.New("unexpected reply with status " + imageServerResponse.Status))
+				return nil, errors.New("unexpected reply with status " + imageServerResponse.Status)
 			}
 		}
-		return i
+		return i, nil
 	}
 }
