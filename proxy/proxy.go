@@ -18,11 +18,12 @@ type Listener interface {
 }
 
 type Proxy struct {
-	foomo        *foomo.Foomo
-	ReverseProxy *httputil.ReverseProxy
-	handlers     []Handler
-	listeners    []Listener
-	auth         *Auth
+	foomo         *foomo.Foomo
+	ReverseProxy  *httputil.ReverseProxy
+	handlers      []Handler
+	listeners     []Listener
+	auth          *Auth
+	ServeHTTPFunc func(http.ResponseWriter, *http.Request)
 }
 
 type ProxyServer struct {
@@ -35,11 +36,16 @@ func NewProxy(f *foomo.Foomo) *Proxy {
 	proxy := &Proxy{
 		foomo: f,
 	}
+	proxy.ServeHTTPFunc = proxy.serveHTTP
 	proxy.ReverseProxy = httputil.NewSingleHostReverseProxy(proxy.foomo.URL)
 	return proxy
 }
 
 func (proxy *Proxy) ServeHTTP(w http.ResponseWriter, incomingRequest *http.Request) {
+	proxy.ServeHTTPFunc(w, incomingRequest)
+}
+
+func (proxy *Proxy) serveHTTP(w http.ResponseWriter, incomingRequest *http.Request) {
 	if proxy.auth != nil && len(proxy.auth.Domain) > 0 && !proxy.foomo.BasicAuthForRequest(w, incomingRequest, proxy.auth.Domain, proxy.auth.Realm, "access denied") {
 		return
 	}
