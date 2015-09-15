@@ -3,10 +3,19 @@ package foomo
 import (
 	"crypto/sha1"
 	"encoding/base64"
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	u "net/url"
+	"os"
 	"strings"
+)
+
+const (
+	RunModeTest        = "test"
+	RunModeDevelopment = "development"
+	RunModeProduction  = "production"
 )
 
 const shaPrefix = "{SHA}"
@@ -22,15 +31,37 @@ type Foomo struct {
 }
 
 func NewFoomo(foomoDir string, runMode string, url string) (f *Foomo, err error) {
-	f, err = makeFoomo(foomoDir, runMode, url, true)
-	return
+	return makeFoomo(foomoDir, runMode, url, true)
 }
 
-func makeFoomo(foomoDir string, runMode string, url string, init bool) (foomo *Foomo, err error) {
-	f := new(Foomo)
-	f.Root = foomoDir
-	f.URL, err = u.Parse(url)
-	f.RunMode = runMode
+func makeFoomo(foomoDir string, runMode string, address string, init bool) (f *Foomo, err error) {
+	// validate run mode
+	switch runMode {
+	case RunModeTest, RunModeDevelopment, RunModeProduction:
+	default:
+		return nil, errors.New("invalid run mode: " + runMode + " must be one of: " + fmt.Sprintln([]string{RunModeTest, RunModeDevelopment, RunModeProduction}))
+	}
+	// validate root dir
+	_, err = os.Stat(foomoDir)
+	if err != nil {
+		return nil, errors.New("can not access foomo dir: " + err.Error())
+	}
+
+	// validate url
+	if len(address) == 0 {
+		return nil, errors.New("foomo address must not be empty")
+	}
+	u, err := u.Parse(address)
+	if err != nil {
+		return nil, errors.New("can not parse foomo url: " + err.Error())
+	}
+	// instantiate
+	f = &Foomo{
+		RunMode: runMode,
+		URL:     u,
+		Root:    foomoDir,
+	}
+	// init
 	if init {
 		f.setupBasicAuthCredentials()
 	}

@@ -1,10 +1,13 @@
 package proxy
 
 import (
-	"github.com/foomo/gofoomo/foomo"
+	"crypto/tls"
+	"errors"
 	"log"
 	"net/http"
 	"net/http/httputil"
+
+	"github.com/foomo/gofoomo/foomo"
 )
 
 type Handler interface {
@@ -97,20 +100,53 @@ func NewProxyServer(config *Config) (p *ProxyServer, err error) {
 	return proxyServer, nil
 }
 
+func setupTLSConfig(tlsConfig TLS) *tls.Config {
+	c := &tls.Config{}
+	switch tlsConfig.Mode {
+	case TLSModeDefault:
+		// will not touch this one, but trust the golang team
+	case TLSModeLoose:
+		// ecommerce compromise
+		c.MinVersion = tls.VersionTLS10
+		c.CipherSuites = []uint16{
+			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_RSA_WITH_RC4_128_SHA,
+		}
+	case TLSModeStrict:
+		// this is serious and we don not mind loosing clients
+		//c.MinVersion = tls.
+		c.MinVersion = tls.VersionTLS12
+	}
+	return c
+}
+
 func (p *ProxyServer) ListenAndServe() error {
 	c := p.Config.Server
 	errorChan := make(chan error)
+	startedHTTPS := false
+	startedHTTP := false
 	if len(c.TLS.CertFile) > 0 && len(c.TLS.KeyFile) > 0 {
 		log.Println("listening for https on", c.TLS.Address)
 		go func() {
-			errorChan <- http.ListenAndServeTLS(c.TLS.Address, c.TLS.CertFile, c.TLS.KeyFile, p.Proxy)
+			tlsServer := &http.Server{
+				Addr:      c.TLS.Address,
+				Handler:   p.Proxy,
+				TLSConfig: setupTLSConfig(c.TLS),
+			}
+			errorChan <- tlsServer.ListenAndServeTLS(c.TLS.CertFile, c.TLS.KeyFile)
+			// errorChan <- http.ListenAndServeTLS(c.TLS.Address, c.TLS.CertFile, c.TLS.KeyFile, p.Proxy)
 		}()
+		startedHTTPS = true
 	}
 	if len(c.Address) > 0 {
 		log.Println("listening for http on", c.Address)
 		go func() {
 			errorChan <- http.ListenAndServe(c.Address, p.Proxy)
 		}()
+		startedHTTP = true
+	}
+	if !startedHTTP && !startedHTTPS {
+		return errors.New("nothing to listen to")
 	}
 	err := <-errorChan
 	return err

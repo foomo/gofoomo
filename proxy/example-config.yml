@@ -1,0 +1,11 @@
+server:
+  address: 0.0.0.0:80
+  tls:
+    mode     : strict
+    address  : 0.0.0.0:443
+    certfile : /path/to/foo.crt
+    keyfile  : /path/to/foo.key
+foomo:
+  address : http://foo/
+  runmode : test
+  dir     : /var/www/foo
