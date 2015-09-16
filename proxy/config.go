@@ -21,9 +21,14 @@ type TLS struct {
 }
 
 const (
-	TLSModeStrict  string = "strict"
-	TLSModeLoose          = "loose"
-	TLSModeDefault        = "default"
+	// this is serious and we do not mind loosing clients (= Mozilla "modern" compatibility)
+	// Compatible clients have versions equal or greater than Firefox 27, Chrome 22, IE 11, Opera 14, Safari 7, Android 4.4, Java 8
+	TLSModeStrict = "strict"
+	// ecommerce compromise
+	// Compatible clients (>=): Firefox 1, Chrome 1, IE 7, Opera 5, Safari 1, Windows XP IE8, Android 2.3, Java 7
+	TLSModeLoose = "loose"
+	// standard crypto/tls.Config un touched - highly compatible, but possibly insecure
+	TLSModeDefault = "default"
 )
 
 type Config struct {
