@@ -106,7 +106,7 @@ func setupTLSConfig(tlsConfig TLS) *tls.Config {
 	case TLSModeDefault:
 		// will not touch this one, but trust the golang team
 	case TLSModeLoose:
-		c.MinVersion = tls.VersionTLS11
+		c.MinVersion = tls.VersionTLS10
 		c.CipherSuites = []uint16{
 			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
