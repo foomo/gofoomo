@@ -30,9 +30,10 @@ type Proxy struct {
 }
 
 type ProxyServer struct {
-	Proxy  *Proxy
-	Config *Config
-	Foomo  *foomo.Foomo
+	Proxy     *Proxy
+	Config    *Config
+	TLSConfig *tls.Config
+	Foomo     *foomo.Foomo
 }
 
 func NewProxy(f *foomo.Foomo) *Proxy {
@@ -97,6 +98,7 @@ func NewProxyServer(config *Config) (p *ProxyServer, err error) {
 	proxyServer.Foomo = f
 	proxyServer.Proxy = NewProxy(proxyServer.Foomo)
 	proxyServer.Proxy.auth = config.Server.Auth
+	proxyServer.TLSConfig = setupTLSConfig(proxyServer.Config.Server.TLS)
 	return proxyServer, nil
 }
 
@@ -156,7 +158,7 @@ func (p *ProxyServer) ListenAndServe() error {
 			tlsServer := &http.Server{
 				Addr:      c.TLS.Address,
 				Handler:   p.Proxy,
-				TLSConfig: setupTLSConfig(c.TLS),
+				TLSConfig: p.TLSConfig,
 			}
 			errorChan <- tlsServer.ListenAndServeTLS(c.TLS.CertFile, c.TLS.KeyFile)
 			// errorChan <- http.ListenAndServeTLS(c.TLS.Address, c.TLS.CertFile, c.TLS.KeyFile, p.Proxy)
