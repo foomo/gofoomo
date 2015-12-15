@@ -9,6 +9,7 @@ import (
 	"path"
 
 	"github.com/foomo/gofoomo/foomo"
+	"github.com/foomo/gofoomo/foomo/bert"
 	"github.com/foomo/gofoomo/utils"
 )
 
@@ -122,11 +123,35 @@ func main() {
 			fs.Parse(os.Args[2:])
 			err := validateFlagsPrepare(flagsPrepare)
 			flagErr(fs, "prepare", err)
-			fmt.Println("preparing foomo", *flagsPrepare.runMode, *flagsPrepare.dir)
+			fmt.Println("preparing foomo in", *flagsPrepare.dir, "to run in run mode", *flagsPrepare.runMode)
+			f, foomoErr := foomo.NewFoomo(*flagsPrepare.dir, *flagsPrepare.runMode, "fake://no-where:8080")
+			if foomoErr != nil {
+				fmt.Println(foomoErr.Error())
+				os.Exit(1)
+			}
+			b := bert.NewBert(f)
+			prepareErr := b.Prepare()
+			if prepareErr != nil {
+				fmt.Println("failed to prepare", prepareErr.Error())
+				os.Exit(1)
+			}
 		case "reset":
-			//foomoFlags, err := validateFlags(true, true)
-			//flagErr("reset", err)
-			//fmt.Println("resetting foomo", foomoFlags)
+			fs, flagsReset := foomoFlagsetReset()
+			fs.Parse(os.Args[2:])
+			err := validateFlagsReset(flagsReset)
+			flagErr(fs, "reset", err)
+			fmt.Println("resetting foomo in", *flagsReset.dir, "in run mode", *flagsReset.runMode)
+			f, foomoErr := foomo.NewFoomo(*flagsReset.dir, *flagsReset.runMode, *flagsReset.address)
+			if foomoErr != nil {
+				fmt.Println(foomoErr.Error())
+				os.Exit(1)
+			}
+			b := bert.NewBert(f)
+			resetErr := b.Reset(*flagsReset.mainModule)
+			if resetErr != nil {
+				fmt.Println("failed to reset", resetErr.Error())
+				os.Exit(1)
+			}
 		default:
 			usage()
 		}
