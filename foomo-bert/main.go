@@ -94,7 +94,7 @@ func validateFlagsPrepare(f *foomoFlagsPrepare) (err error) {
 	return nil
 }
 
-func usage() {
+func usage(forCommand string) {
 	fmt.Println("usage:", os.Args[0], "<command>")
 	fsPrepare, _ := foomoFlagsetPrepare()
 	fsReset, _ := foomoFlagsetReset()
@@ -102,15 +102,17 @@ func usage() {
 		"prepare": fsPrepare,
 		"reset":   fsReset,
 	} {
-		fmt.Println(os.Args[0], command, ":")
-		fs.PrintDefaults()
+		if forCommand == "" || (forCommand == command) {
+			fmt.Println(os.Args[0], command, ":")
+			fs.PrintDefaults()
+		}
 	}
 }
 
-func flagErr(fs *flag.FlagSet, comment string, err error) {
+func flagErr(fs *flag.FlagSet, command string, err error) {
 	if err != nil {
-		fmt.Println(comment, err.Error())
-		usage()
+		fmt.Println(command, err.Error())
+		usage(command)
 		os.Exit(1)
 	}
 }
@@ -153,9 +155,9 @@ func main() {
 				os.Exit(1)
 			}
 		default:
-			usage()
+			usage("")
 		}
 	} else {
-		usage()
+		usage("")
 	}
 }
