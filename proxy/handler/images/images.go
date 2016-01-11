@@ -3,6 +3,8 @@ package images
 import (
 	"errors"
 	"github.com/foomo/gofoomo/foomo"
+	//"io"
+	//"log"
 	"net/http"
 	"os"
 	"strings"
@@ -35,6 +37,11 @@ func (a *Adaptive) HandlesRequest(incomingRequest *http.Request) bool {
 func (a *Adaptive) ServeHTTP(w http.ResponseWriter, incomingRequest *http.Request) {
 
 	info, err := a.Cache.Get(incomingRequest, a.BreakPoints)
+
+	//log.Println("info for request" + incomingRequest.RequestURI)
+	//log.Println(info)
+	//log.Println("------------------------------------")
+
 	if err != nil {
 		panic(err)
 	}
@@ -52,27 +59,32 @@ func (a *Adaptive) ServeHTTP(w http.ResponseWriter, incomingRequest *http.Reques
 		if err != nil {
 			panic(err)
 		}
-		w.Header().Set("Expires", time.Now().Add(time.Hour*24*30).Format(http.TimeFormat))
-		//writeHeaders(w, info)
-		http.ServeContent(w, incomingRequest, file.Name(), fileInfo.ModTime(), file)
-		/*
-			browserEtag := incomingRequest.Header.Get("If-None-Match")
 
-			if browserEtag == info.Etag {
-				w.WriteHeader(http.StatusNotModified)
-				writeHeaders(w, info)
+		w.Header().Set("Expires", time.Now().Add(time.Hour * 24 * 7).Format(http.TimeFormat))
+
+		//this part handles etags in parallel with expires
+/*		browserEtag := incomingRequest.Header.Get("If-None-Match")
+
+		if browserEtag == info.Etag {
+			w.WriteHeader(http.StatusNotModified)
+			writeHeaders(w, info)
+
+		} else {
+			writeHeaders(w, info)
+			file, err := os.Open(info.Filename)
+			if err != nil {
+				// dummy image ?!
+				panic(errors.New("could not open image file " + info.Filename + " " + err.Error()))
 			} else {
-				writeHeaders(w, info)
-				file, err := os.Open(info.Filename)
-				if err != nil {
-					// dummy image ?!
-					panic(errors.New("could not open image file " + info.Filename + " " + err.Error()))
-				} else {
-					io.Copy(w, file)
-					defer file.Close()
+				io.Copy(w, file)
+				defer file.Close()
 
-				}
-			}*/
+			}
+		}
+		//end of ETag handling
+*/
+		http.ServeContent(w, incomingRequest, file.Name(), fileInfo.ModTime(), file)
+
 	}
 }
 
