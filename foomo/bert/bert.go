@@ -54,13 +54,20 @@ func (b *Bert) get(explanation string, path string) error {
 	fmt.Println(explanation)
 	fmt.Println(line)
 	url := b.foomo.GetURLWithCredentialsForDefaultBasicAuthDomain() + path
-	resetAllResponse, err := http.DefaultClient.Get(url)
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
 	}
-	responseBytes, err := ioutil.ReadAll(resetAllResponse.Body)
+	response, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
+	}
+	responseBytes, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return err
+	}
+	if response.StatusCode != http.StatusOK {
+		fmt.Println("something did not return a 200 for path:", path, ", status code:", response.StatusCode, ", status:", response.Status)
 	}
 	fmt.Println(string(responseBytes))
 	fmt.Println(line)
