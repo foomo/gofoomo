@@ -63,7 +63,10 @@ func makeFoomo(foomoDir string, runMode string, address string, init bool) (f *F
 	}
 	// init
 	if init {
-		f.setupBasicAuthCredentials()
+		authErr := f.setupBasicAuthCredentials()
+		if authErr != nil {
+			return nil, authErr
+		}
 	}
 	return f, err
 }
