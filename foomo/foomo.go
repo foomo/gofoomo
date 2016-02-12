@@ -20,6 +20,7 @@ const (
 
 const shaPrefix = "{SHA}"
 
+// Foomo foomo go wrapper
 type Foomo struct {
 	Root                 string
 	RunMode              string
@@ -30,8 +31,14 @@ type Foomo struct {
 	}
 }
 
+// NewFoomo get a foomo instance
 func NewFoomo(foomoDir string, runMode string, url string) (f *Foomo, err error) {
 	return makeFoomo(foomoDir, runMode, url, true)
+}
+
+// BareFoomo is an unistalled foomo, that bert uses to prepare an installation
+func BareFoomo(foomoDir string, runMode string) (f *Foomo, err error) {
+	return makeFoomo(foomoDir, runMode, "fake://no", false)
 }
 
 func makeFoomo(foomoDir string, runMode string, address string, init bool) (f *Foomo, err error) {
@@ -137,7 +144,7 @@ LineLoop:
 		}
 	}
 	newLines = append(newLines, user+":"+getBasicAuthHash(password))
-	return strings.Join(newLines, "\n")
+	return strings.Join(newLines, "\n") + "\n"
 }
 
 func getBasicAuthHash(password string) string {

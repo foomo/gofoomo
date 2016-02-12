@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/bgentry/speakeasy"
 	"github.com/foomo/gofoomo/foomo"
 	"github.com/foomo/gofoomo/foomo/bert"
 	"github.com/foomo/gofoomo/utils"
@@ -16,6 +17,7 @@ import (
 type foomoFlagsPrepare struct {
 	runMode *string
 	dir     *string
+	admin   *string
 }
 
 type foomoFlagsReset struct {
@@ -47,6 +49,7 @@ func foomoFlagsetPrepare() (fs *flag.FlagSet, f *foomoFlagsPrepare) {
 	fs = flag.NewFlagSet(os.Args[0]+" prepare", flag.ContinueOnError)
 	f.runMode = getFlagRunMode(fs)
 	f.dir = getFlagDir(fs)
+	f.admin = fs.String("admin", "", "name of admin user to setup basic auth for")
 	return fs, f
 }
 
@@ -85,6 +88,9 @@ func validateFlagsPrepare(f *foomoFlagsPrepare) (err error) {
 	case foomo.RunModeTest, foomo.RunModeProduction, foomo.RunModeDevelopment:
 	default:
 		return errors.New(fmt.Sprintln("invalid run mode", "\""+*f.runMode+"\"", "must be one of", []string{foomo.RunModeTest, foomo.RunModeProduction, foomo.RunModeDevelopment}))
+	}
+	if *f.dir == "" {
+		return errors.New("-dir must not be empty")
 	}
 	// foomo dir
 	_, dirErr := utils.IsDir(*f.dir)
@@ -126,9 +132,9 @@ func main() {
 			err := validateFlagsPrepare(flagsPrepare)
 			flagErr(fs, "prepare", err)
 			fmt.Println("preparing foomo in", *flagsPrepare.dir, "to run in run mode", *flagsPrepare.runMode)
-			f, foomoErr := foomo.NewFoomo(*flagsPrepare.dir, *flagsPrepare.runMode, "fake://no-where:8080")
+			f, foomoErr := foomo.BareFoomo(*flagsPrepare.dir, *flagsPrepare.runMode)
 			if foomoErr != nil {
-				fmt.Println(foomoErr.Error())
+				fmt.Println("could not set up foomo instance", foomoErr.Error())
 				os.Exit(1)
 			}
 			b := bert.NewBert(f)
@@ -136,6 +142,16 @@ func main() {
 			if prepareErr != nil {
 				fmt.Println("failed to prepare", prepareErr.Error())
 				os.Exit(1)
+			}
+			if len(*flagsPrepare.admin) > 0 {
+				fmt.Println("adding admin user", *flagsPrepare.admin)
+				passwd, err := speakeasy.Ask("enter password for " + *flagsPrepare.admin)
+				if err != nil {
+					fmt.Println("could not read password, giving up")
+					os.Exit(1)
+				}
+				fmt.Println("adding password", passwd, "for", *flagsPrepare.admin)
+
 			}
 		case "reset":
 			fs, flagsReset := foomoFlagsetReset()
