@@ -7,6 +7,8 @@ import (
 
 func getTestFoomoForFSStuff() *Foomo {
 	tempDir := os.TempDir()
+	//tempDir, err := ioutil.TempDir(tmp, "dummy-foomo")
+	os.MkdirAll(tempDir[0:len(tempDir)-1], 0777)
 	f, err := BareFoomo(tempDir[0:len(tempDir)-1], "test")
 	if err != nil {
 		panic(err)
