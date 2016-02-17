@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/foomo/gofoomo/foomo"
@@ -46,7 +45,7 @@ func getTestFoomo() *foomo.Foomo {
 
 	if testFoomo == nil {
 		ts := getTestServer()
-		tmp := os.TempDir()
+		tmp := "/tmp" //os.TempDir()
 		dir, err := ioutil.TempDir(tmp, "dummy-foomo")
 		poe(err, "failed to get temp dir")
 		bareFoomo, err := foomo.BareFoomo(dir, "test")
