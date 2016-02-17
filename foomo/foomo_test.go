@@ -1,23 +1,31 @@
 package foomo
 
 import (
+	"io/ioutil"
 	"os"
 	"testing"
 )
 
+var tmp string
+
 func getTestFoomoForFSStuff() *Foomo {
-	tempDir := os.TempDir()
-	//tempDir, err := ioutil.TempDir(tmp, "dummy-foomo")
-	os.MkdirAll(tempDir[0:len(tempDir)-1], 0777)
-	f, err := BareFoomo(tempDir[0:len(tempDir)-1], "test")
+	tempDir, err := ioutil.TempDir(os.TempDir(), "dummy-foomo")
 	if err != nil {
 		panic(err)
 	}
+	tempDir = tempDir[0 : len(tempDir)-1]
+	tmp = tempDir
+	os.MkdirAll(tempDir, 0777)
+	f, err := BareFoomo(tempDir, "test")
+	if err != nil {
+		panic(err)
+	}
+
 	return f
 }
 
 func assertTempPath(t *testing.T, topic string, expected string, actual string) {
-	assertStringsEqual(t, topic, os.TempDir()+expected, actual)
+	assertStringsEqual(t, topic, tmp+"/"+expected, actual)
 }
 func assertStringsEqual(t *testing.T, topic string, expected string, actual string) {
 	if actual != expected {
