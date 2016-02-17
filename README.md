@@ -4,7 +4,7 @@
 
 Gofoomo lets you use Go in your foomo project. It also lets you use php in your Go project.
 
-We want to use Go, but it is not the right language for everyone, who is using php. Php´s save and reload work cycle in combination with it´s dynamic character is a great fit especially when doing frontend work.
+We want to use Go, but it is not the right language for everyone, who is using php.
 
 ## Complementing your LAMP stack
 
