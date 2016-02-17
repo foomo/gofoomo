@@ -7,6 +7,7 @@ import (
 	"strings"
 )
 
+// ServeCompressed serve a request with a compressed response, if the client accepts it
 func ServeCompressed(w http.ResponseWriter, incomingRequest *http.Request, writeCallback func(writer io.Writer) error) error {
 	var writer io.Writer
 	writer = w
@@ -20,8 +21,10 @@ func ServeCompressed(w http.ResponseWriter, incomingRequest *http.Request, write
 
 }
 
+// Resource304 vo
 type Resource304 struct {
 	Etag string
 }
 
+// Handle304 304 handler
 func Handle304(r *http.Request) {}

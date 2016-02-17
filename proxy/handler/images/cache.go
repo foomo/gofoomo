@@ -2,14 +2,16 @@ package images
 
 import (
 	"errors"
-	"github.com/foomo/gofoomo/foomo"
 	"log"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/foomo/gofoomo/foomo"
 )
 
+// ImageInfo image cache meta data
 type ImageInfo struct {
 	Filename   string
 	Etag       string
@@ -18,6 +20,7 @@ type ImageInfo struct {
 	Expires    int64
 }
 
+// NewImageInfo constructor
 func NewImageInfo(response *http.Response) *ImageInfo {
 	i := new(ImageInfo)
 	if response != nil {
@@ -35,11 +38,13 @@ func (i *ImageInfo) getHeader(name string) []string {
 	return h
 }
 
+// ImageRequestResult result vo
 type ImageRequestResult struct {
 	Error   error
 	Request *ImageRequest
 }
 
+// ImageRequest request vo
 type ImageRequest struct {
 	Id                         string
 	IncomingRequest            *http.Request
@@ -48,6 +53,7 @@ type ImageRequest struct {
 	ImageInfo                  *ImageInfo
 }
 
+// NewImageRequest image request constructor
 func NewImageRequest(id string, incomingRequest *http.Request, foomoMediaClientInfoCookie *http.Cookie) *ImageRequest {
 	r := new(ImageRequest)
 	r.Id = id
@@ -64,6 +70,7 @@ func (i *ImageRequest) execute(cache *Cache) error {
 	return result.Error
 }
 
+// Cache image cache
 type Cache struct {
 	Directory              map[string]*ImageInfo
 	Foomo                  *foomo.Foomo
@@ -75,6 +82,7 @@ type Cache struct {
 	//doneChannel        chan *ImageRequest
 }
 
+// NewCache cache constructor
 func NewCache(f *foomo.Foomo) *Cache {
 	c := new(Cache)
 	c.Foomo = f
@@ -124,6 +132,7 @@ func (c *Cache) runLoop() {
 
 }
 
+// Get get image with the given breakpoints
 func (c *Cache) Get(request *http.Request, breakPoints []int64) (info *ImageInfo, err error) {
 
 	cookie := getFoomoMediaClientInfoCookie(request.Cookies(), breakPoints)
@@ -174,49 +183,47 @@ func (c *Cache) getImage(incomingRequest *http.Request, foomoMediaClientInfoCook
 
 	if err != nil {
 		return NewImageInfo(nil), err
-	} else {
-		request.AddCookie(foomoMediaClientInfoCookie)
-		if c.foomoSessionCookie != nil {
-			request.AddCookie(c.foomoSessionCookie)
+	}
+	request.AddCookie(foomoMediaClientInfoCookie)
+	if c.foomoSessionCookie != nil {
+		request.AddCookie(c.foomoSessionCookie)
+	}
+	request.URL.Opaque = incomingRequest.URL.Opaque
+	request.URL.Host = c.Foomo.URL.Host
+	request.URL.Scheme = c.Foomo.URL.Scheme
+	imageServerResponse, err := c.client.Do(request)
+	i = NewImageInfo(imageServerResponse)
+	if imageServerResponse != nil {
+		defer imageServerResponse.Body.Close()
+	}
+	if err != nil {
+		if imageServerResponse != nil && imageServerResponse.StatusCode == http.StatusMovedPermanently {
+			return nil, errors.New("unexpected redirect")
 		}
-		request.URL.Opaque = incomingRequest.URL.Opaque
-		request.URL.Host = c.Foomo.URL.Host
-		request.URL.Scheme = c.Foomo.URL.Scheme
-		imageServerResponse, err := c.client.Do(request)
-		i := NewImageInfo(imageServerResponse)
-		if imageServerResponse != nil {
-			defer imageServerResponse.Body.Close()
+		return nil, errors.New("unexpected error " + err.Error())
+	}
+
+	i.StatusCode = imageServerResponse.StatusCode
+	c.checkFoomoSessionCookie(imageServerResponse)
+	switch i.StatusCode {
+	case http.StatusOK, http.StatusNotFound:
+		t, timeErr := time.Parse(time.RFC1123, imageServerResponse.Header.Get("Expires"))
+		if timeErr == nil {
+			i.Expires = t.Unix()
+		} else {
+			i.Expires = 0
+			i.Expires = time.Now().Unix() + 3600
+			log.Println("could not parse expiration time", timeErr)
 		}
 		if err != nil {
-			if imageServerResponse != nil && imageServerResponse.StatusCode == http.StatusMovedPermanently {
-				return nil, errors.New("unexpected redirect")
-			} else {
-				return nil, errors.New("unexpected error " + err.Error())
-			}
+			panic(errors.New("unexpected error " + err.Error()))
 		} else {
-
-			i.StatusCode = imageServerResponse.StatusCode
-			c.checkFoomoSessionCookie(imageServerResponse)
-			switch i.StatusCode {
-			case http.StatusOK, http.StatusNotFound:
-				t, timeErr := time.Parse(time.RFC1123, imageServerResponse.Header.Get("Expires"))
-				if timeErr == nil {
-					i.Expires = t.Unix()
-				} else {
-					i.Expires = 0
-					i.Expires = time.Now().Unix() + 3600
-					log.Println("could not parse expiration time", timeErr)
-				}
-				if err != nil {
-					panic(errors.New("unexpected error " + err.Error()))
-				} else {
-					i.Etag = imageServerResponse.Header.Get("Etag")
-				}
-
-			default:
-				return nil, errors.New("unexpected reply with status " + imageServerResponse.Status)
-			}
+			i.Etag = imageServerResponse.Header.Get("Etag")
 		}
-		return i, nil
+
+	default:
+		return nil, errors.New("unexpected reply with status " + imageServerResponse.Status)
 	}
+	return i, nil
+
 }

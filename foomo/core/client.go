@@ -11,12 +11,12 @@ import (
 )
 
 func get(foomo *foomo.Foomo, path ...string) (data []byte, err error) {
-	callUrl := foomo.GetURLWithCredentialsForDefaultBasicAuthDomain()
+	callURL := foomo.GetURLWithCredentialsForDefaultBasicAuthDomain()
 	encodedPath := ""
 	for _, pathEntry := range path {
 		encodedPath += "/" + url.QueryEscape(pathEntry)
 	}
-	req, err := http.NewRequest("GET", callUrl+"/foomo/core.php"+encodedPath, nil)
+	req, err := http.NewRequest("GET", callURL+"/foomo/core.php"+encodedPath, nil)
 	if err != nil {
 		return
 	}
@@ -36,19 +36,19 @@ func get(foomo *foomo.Foomo, path ...string) (data []byte, err error) {
 	return data, err
 }
 
+// GetJSON call into foomo and unmarshal response using encoding/json
 func GetJSON(foomo *foomo.Foomo, target interface{}, path ...string) error {
 	data, err := get(foomo, path...)
 	if err == nil {
 		return json.Unmarshal(data, &target)
-	} else {
-		return err
 	}
+	return err
 }
 
+// GetConfig retrieve a domain config
 func GetConfig(foomo *foomo.Foomo, target interface{}, moduleName string, configName string, domain string) (err error) {
 	if len(domain) == 0 {
 		return GetJSON(foomo, target, "config", moduleName, configName)
-	} else {
-		return GetJSON(foomo, target, "config", moduleName, configName, domain)
 	}
+	return GetJSON(foomo, target, "config", moduleName, configName, domain)
 }

@@ -2,8 +2,15 @@ package core
 
 import (
 	"encoding/json"
-	"github.com/foomo/gofoomo/foomo"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"os"
 	"testing"
+
+	"github.com/foomo/gofoomo/foomo"
+	"github.com/foomo/gofoomo/foomo/bert"
 )
 
 type CoreConfig struct {
@@ -15,9 +22,41 @@ type CoreConfig struct {
 
 var testFoomo *foomo.Foomo
 
+func poe(err error, msg string) {
+	if err != nil {
+		panic(msg + " : " + err.Error())
+	}
+}
+
+func getTestServer() *httptest.Server {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{
+			    "enabledModules": [
+			        "Foomo"
+			    ],
+			    "availableModules": [
+			        "Foomo"
+			    ]
+			}`))
+	}))
+	return ts
+}
+
 func getTestFoomo() *foomo.Foomo {
+
 	if testFoomo == nil {
-		f, _ := foomo.NewFoomo("/Users/jan/vagrant/schild/www/schild", "test", "http://schild-local-test.bestbytes.net")
+		ts := getTestServer()
+		tmp := os.TempDir()
+		dir, err := ioutil.TempDir(tmp, "dummy-foomo")
+		poe(err, "failed to get temp dir")
+		bareFoomo, err := foomo.BareFoomo(dir, "test")
+		poe(err, "failed to get bare foomo")
+		b := bert.NewBert(bareFoomo)
+		b.Prepare()
+		f, err := foomo.NewFoomo(dir, "test", fmt.Sprint(ts.URL))
+		if err != nil {
+			panic("invalid test foomo " + err.Error())
+		}
 		testFoomo = f
 	}
 	return testFoomo

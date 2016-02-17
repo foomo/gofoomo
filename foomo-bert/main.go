@@ -8,7 +8,6 @@ import (
 	"os"
 	"path"
 
-	"github.com/bgentry/speakeasy"
 	"github.com/foomo/gofoomo/foomo"
 	"github.com/foomo/gofoomo/foomo/bert"
 	"github.com/foomo/gofoomo/utils"
@@ -144,14 +143,12 @@ func main() {
 				os.Exit(1)
 			}
 			if len(*flagsPrepare.admin) > 0 {
-				fmt.Println("adding admin user", *flagsPrepare.admin)
-				passwd, err := speakeasy.Ask("enter password for " + *flagsPrepare.admin)
+				err = b.PrepareAdmin(*flagsPrepare.admin)
 				if err != nil {
-					fmt.Println("could not read password, giving up")
+					fmt.Println("could not set password for " + *flagsPrepare.admin + " " + err.Error())
 					os.Exit(1)
 				}
-				fmt.Println("adding password", passwd, "for", *flagsPrepare.admin)
-
+				os.Exit(0)
 			}
 		case "reset":
 			fs, flagsReset := foomoFlagsetReset()

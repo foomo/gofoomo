@@ -1,46 +1,46 @@
 package handler
 
 import (
-	"github.com/foomo/gofoomo/foomo"
-	"github.com/foomo/gofoomo/proxy/utils"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/foomo/gofoomo/foomo"
+	"github.com/foomo/gofoomo/proxy/utils"
 )
 
-// Handles serving static files from the local file system. It knows about
+// StaticFiles handles serving static files from the local file system. It knows about
 // foomos hierarchy and serves files from the htdocs directories of modules.
 // Currently it will also serve files of disabled modules.
-
 type StaticFiles struct {
 	foomo *foomo.Foomo
 }
 
+// NewStaticFiles constructor
 func NewStaticFiles(foomo *foomo.Foomo) *StaticFiles {
 	sf := new(StaticFiles)
 	sf.foomo = foomo
 	return sf
 }
 
+// HandlesRequest request handler implementation
 func (files *StaticFiles) HandlesRequest(incomingRequest *http.Request) bool {
+	if strings.HasPrefix(incomingRequest.URL.Path, "/foomo/modulesVar/") {
+		return true
+	}
 	if strings.HasPrefix(incomingRequest.URL.Path, "/foomo/modules/") {
 		parts := strings.Split(incomingRequest.URL.Path, "/")
 		if len(parts) > 3 {
 			moduleNameParts := strings.Split(parts[3], "-")
 			if strings.HasSuffix(parts[len(parts)-1], ".php") {
 				return false
-			} else {
-				return fileExists(files.foomo.GetModuleHtdocsDir(moduleNameParts[0]) + "/" + strings.Join(parts[4:], "/"))
 			}
-		} else {
-			return false
+			return fileExists(files.foomo.GetModuleHtdocsDir(moduleNameParts[0]) + "/" + strings.Join(parts[4:], "/"))
 		}
-	} else if strings.HasPrefix(incomingRequest.URL.Path, "/foomo/modulesVar/") {
-		return true
-	} else {
 		return false
 	}
+	return false
 }
 
 func fileExists(filename string) bool {
@@ -76,26 +76,14 @@ func (files *StaticFiles) ServeHTTP(w http.ResponseWriter, incomingRequest *http
 	panicOnErr(err)
 	//const TimeFormat = "Mon, 02 Jan 2006 15:04:05 GMT"
 	w.Header().Set("Expires", time.Now().Add(time.Hour*24*365).Format(http.TimeFormat))
+	// should we really compress all static file types ?!
 	if compress && strings.Contains(incomingRequest.Header.Get("Accept-Encoding"), "gzip") {
 		w.Header().Set("Content-Encoding", "gzip")
 		crw := utils.NewCompressedResponseWriter(w)
 		defer crw.Close()
 		w = crw
 	}
-
 	http.ServeContent(w, incomingRequest, f.Name(), fileInfo.ModTime(), f)
-	/*	if compress {
-			err := utils.ServeCompressed(w, incomingRequest, func(writer io.Writer) error {
-				_, err := io.Copy(writer, f)
-				return err
-			})
-			panicOnErr(err)
-		} else {
-			_, err := io.Copy(w, f)
-			panicOnErr(err)
-		}
-	*/
-
 }
 
 func getContentType(path string) (string, bool) {

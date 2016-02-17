@@ -1,16 +1,19 @@
 package images
 
 import (
-	"github.com/foomo/gofoomo/foomo"
-	"github.com/foomo/gofoomo/foomo/core"
 	"sort"
 	"strconv"
+
+	"github.com/foomo/gofoomo/foomo"
+	"github.com/foomo/gofoomo/foomo/core"
 )
 
+// MediaServerConfig foomo config helper
 type MediaServerConfig struct {
 	Grid map[string]map[string]int64 `json:"grid"`
 }
 
+// SessionConfig foomo config helper
 type SessionConfig struct {
 	Name string `json:"name"`
 }
@@ -24,7 +27,7 @@ func getBreakPoints(f *foomo.Foomo) []int64 {
 	}
 	breakPointsInt := []int{}
 
-	for breakPointString, _ := range c.Grid {
+	for breakPointString := range c.Grid {
 		breakPointInt, _ := strconv.Atoi(breakPointString)
 		if breakPointInt > 0 {
 			breakPointsInt = append(breakPointsInt, breakPointInt)

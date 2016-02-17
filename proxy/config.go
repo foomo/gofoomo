@@ -5,32 +5,26 @@ import (
 	"fmt"
 	"io/ioutil"
 
+	"github.com/foomo/tlsconfig"
+
 	"gopkg.in/yaml.v2"
 )
 
+// Auth basic auth
 type Auth struct {
 	Domain string
 	Realm  string
 }
 
+// TLS proxy tls config vo
 type TLS struct {
-	Mode     string
+	Mode     tlsconfig.TLSModeServer
 	Address  string
 	CertFile string
 	KeyFile  string
 }
 
-const (
-	// this is serious and we do not mind loosing clients (= Mozilla "modern" compatibility)
-	// Compatible clients have versions equal or greater than Firefox 27, Chrome 22, IE 11, Opera 14, Safari 7, Android 4.4, Java 8
-	TLSModeStrict = "strict"
-	// ecommerce compromise
-	// Compatible clients (>=): Firefox 1, Chrome 1, IE 7, Opera 5, Safari 1, Windows XP IE8, Android 2.3, Java 7
-	TLSModeLoose = "loose"
-	// standard crypto/tls.Config un touched - highly compatible, but possibly insecure
-	TLSModeDefault = "default"
-)
-
+// Config proxy configuration
 type Config struct {
 	// how should the proxy server run
 	Server struct {
@@ -51,6 +45,7 @@ type Config struct {
 	AppOptions map[string]string
 }
 
+// ReadConfig from a file
 func ReadConfig(filename string) (config *Config, err error) {
 	config = &Config{}
 	yamlBytes, err := ioutil.ReadFile(filename)
@@ -62,12 +57,12 @@ func ReadConfig(filename string) (config *Config, err error) {
 		return nil, err
 	}
 	if config.Server.TLS.Mode == "" {
-		config.Server.TLS.Mode = TLSModeDefault
+		config.Server.TLS.Mode = tlsconfig.TLSModeServerDefault
 	}
 	switch config.Server.TLS.Mode {
-	case TLSModeDefault, TLSModeLoose, TLSModeStrict:
+	case tlsconfig.TLSModeServerDefault, tlsconfig.TLSModeServerLoose, tlsconfig.TLSModeServerStrict:
 	default:
-		return nil, errors.New("unknown server.tls.mode: " + config.Server.TLS.Mode + " - must be one of: " + fmt.Sprintln([]string{TLSModeDefault, TLSModeLoose, TLSModeStrict}))
+		return nil, errors.New("unknown server.tls.mode: " + string(config.Server.TLS.Mode) + " - must be one of: " + fmt.Sprintln([]tlsconfig.TLSModeServer{tlsconfig.TLSModeServerDefault, tlsconfig.TLSModeServerLoose, tlsconfig.TLSModeServerStrict}))
 	}
 	return config, nil
 }

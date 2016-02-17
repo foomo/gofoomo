@@ -1,9 +1,10 @@
 package handler
 
 import (
-	"github.com/foomo/gofoomo/rpc"
 	"log"
 	"testing"
+
+	"github.com/foomo/gofoomo/rpc"
 )
 
 type TestService struct {

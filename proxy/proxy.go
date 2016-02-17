@@ -8,18 +8,22 @@ import (
 	"net/http/httputil"
 
 	"github.com/foomo/gofoomo/foomo"
+	"github.com/foomo/tlsconfig"
 )
 
+// Handler proxy handler
 type Handler interface {
 	HandlesRequest(incomingRequest *http.Request) bool
 	ServeHTTP(w http.ResponseWriter, incomingRequest *http.Request)
 }
 
+// Listener deprecated
 type Listener interface {
 	ListenServeHTTPStart(w http.ResponseWriter, incomingRequest *http.Request) http.ResponseWriter
 	ListenServeHTTPDone(w http.ResponseWriter, incomingRequest *http.Request)
 }
 
+// Proxy foomo proxy
 type Proxy struct {
 	foomo         *foomo.Foomo
 	ReverseProxy  *httputil.ReverseProxy
@@ -29,13 +33,15 @@ type Proxy struct {
 	ServeHTTPFunc func(http.ResponseWriter, *http.Request)
 }
 
-type ProxyServer struct {
+// Server server for Proxy
+type Server struct {
 	Proxy     *Proxy
 	Config    *Config
 	TLSConfig *tls.Config
 	Foomo     *foomo.Foomo
 }
 
+// NewProxy constructor
 func NewProxy(f *foomo.Foomo) *Proxy {
 	proxy := &Proxy{
 		foomo: f,
@@ -50,8 +56,9 @@ func (proxy *Proxy) ServeHTTP(w http.ResponseWriter, incomingRequest *http.Reque
 }
 
 func (proxy *Proxy) serveHTTP(w http.ResponseWriter, incomingRequest *http.Request) {
-	if proxy.auth != nil && len(proxy.auth.Domain) > 0 && !proxy.foomo.BasicAuthForRequest(w, incomingRequest, proxy.auth.Domain, proxy.auth.Realm, "access denied") {
-		return
+	if proxy.auth != nil && len(proxy.auth.Domain) > 0 {
+		//&& !proxy.foomo.BasicAuthForRequest(w, incomingRequest, proxy.auth.Domain, proxy.auth.Realm, "access denied") {
+
 	}
 	for _, listener := range proxy.listeners {
 		w = listener.ListenServeHTTPStart(w, incomingRequest)
@@ -72,82 +79,44 @@ func (proxy *Proxy) serveHTTP(w http.ResponseWriter, incomingRequest *http.Reque
 
 }
 
+// AddHandler add a handler
 func (proxy *Proxy) AddHandler(handler Handler) {
 	proxy.handlers = append(proxy.handlers, handler)
 }
 
+// AddListener deprecated
 func (proxy *Proxy) AddListener(listener Listener) {
 	proxy.listeners = append(proxy.listeners, listener)
 }
 
-func NewProxyServerWithConfig(filename string) (p *ProxyServer, err error) {
+// NewServerWithConfig constructor with a config file
+func NewServerWithConfig(filename string) (p *Server, err error) {
 	config, err := ReadConfig(filename)
 	if err != nil {
 		return nil, err
 	}
-	return NewProxyServer(config)
+	return NewServer(config)
 }
 
-func NewProxyServer(config *Config) (p *ProxyServer, err error) {
-	proxyServer := new(ProxyServer)
-	proxyServer.Config = config
+// NewServer constructor with config struct
+func NewServer(config *Config) (p *Server, err error) {
+	p = &Server{
+		Config: config,
+	}
 	f, err := foomo.NewFoomo(config.Foomo.Dir, config.Foomo.RunMode, config.Foomo.Address)
 	if err != nil {
 		return nil, err
 	}
-	proxyServer.Foomo = f
-	proxyServer.Proxy = NewProxy(proxyServer.Foomo)
-	proxyServer.Proxy.auth = config.Server.Auth
-	proxyServer.TLSConfig = setupTLSConfig(proxyServer.Config.Server.TLS)
-	return proxyServer, nil
+	p.Foomo = f
+	p.Proxy = NewProxy(p.Foomo)
+	p.Proxy.auth = config.Server.Auth
+	p.TLSConfig = tlsconfig.NewServerTLSConfig(p.Config.Server.TLS.Mode)
+	return p, nil
 }
 
-func setupTLSConfig(tlsConfig TLS) *tls.Config {
-	c := &tls.Config{}
-	switch tlsConfig.Mode {
-	case TLSModeDefault:
-		// will not touch this one, but trust the golang team
-	case TLSModeLoose:
-		c.MinVersion = tls.VersionTLS10
-		c.CipherSuites = []uint16{
-			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
-			tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
-			tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
-			tls.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
-			tls.TLS_RSA_WITH_AES_128_CBC_SHA,
-		}
-		c.CurvePreferences = []tls.CurveID{
-			tls.CurveP256,
-			tls.CurveP384,
-			tls.CurveP521,
-		}
-	case TLSModeStrict:
-		c.MinVersion = tls.VersionTLS12
-		c.PreferServerCipherSuites = true
-		c.CipherSuites = []uint16{
-			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
-			tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
-			tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
-			tls.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
-		}
-		c.CurvePreferences = []tls.CurveID{
-			tls.CurveP256,
-			tls.CurveP384,
-			tls.CurveP521,
-		}
-	}
-	return c
-}
-
-func (p *ProxyServer) ListenAndServe() error {
+// ListenAndServe until things go bad, depending upon configuration this will\
+// listen to http and https requests
+func (p *Server) ListenAndServe() error {
 	c := p.Config.Server
 	errorChan := make(chan error)
 	startedHTTPS := false
@@ -161,7 +130,6 @@ func (p *ProxyServer) ListenAndServe() error {
 				TLSConfig: p.TLSConfig,
 			}
 			errorChan <- tlsServer.ListenAndServeTLS(c.TLS.CertFile, c.TLS.KeyFile)
-			// errorChan <- http.ListenAndServeTLS(c.TLS.Address, c.TLS.CertFile, c.TLS.KeyFile, p.Proxy)
 		}()
 		startedHTTPS = true
 	}

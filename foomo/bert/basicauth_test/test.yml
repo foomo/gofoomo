@@ -1,6 +1,0 @@
----
-default:
-  - secret/foo
-  - secret/bar
-sepp:
-  - secret/sepp/test

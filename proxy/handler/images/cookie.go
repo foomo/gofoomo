@@ -10,18 +10,24 @@ import (
 )
 
 const (
-	DefaultScreenWidth             = 1024
-	DefaultScreenHeight            = 768
-	DefaultPixelRatio              = 1.0
+	// DefaultScreenWidth still 1024
+	DefaultScreenWidth = 1024
+	// DefaultScreenHeight like in the good old days
+	DefaultScreenHeight = 768
+	// DefaultPixelRatio in case of doubt lightweight
+	DefaultPixelRatio = 1.0
+	// FoomoMediaClientInfoCookieName that is the name of the cookie we inspect to extract the client informattions from
 	FoomoMediaClientInfoCookieName = "foomoMediaClientInfo"
 )
 
+// ClientInfo vo
 type ClientInfo struct {
 	screenWidth  int64
 	screenHeight int64
 	pixelRatio   float64
 }
 
+// NewClientInfo constructor
 func NewClientInfo() *ClientInfo {
 	info := new(ClientInfo)
 	info.screenWidth = DefaultScreenWidth
@@ -36,18 +42,17 @@ func readFoomoMediaClientInfo(cookie string) (clientInfo *ClientInfo, err error)
 	if len(parts) != 2 {
 		err = errors.New(fmt.Sprint("could not separate screen size from pixel ratio", parts))
 		return clientInfo, err
-	} else {
-		screenSizeParts := strings.Split(parts[0], "x")
-		if len(screenSizeParts) != 2 {
-			err = errors.New(fmt.Sprint("could not find screen size components ", len(screenSizeParts), " in ", parts[0]))
-		} else {
-			clientInfo = NewClientInfo()
-			clientInfo.pixelRatio, _ = strconv.ParseFloat(parts[1], 32)
-			clientInfo.screenWidth, _ = strconv.ParseInt(screenSizeParts[0], 0, 32)
-			clientInfo.screenHeight, _ = strconv.ParseInt(screenSizeParts[1], 0, 32)
-		}
-		return clientInfo, err
 	}
+	screenSizeParts := strings.Split(parts[0], "x")
+	if len(screenSizeParts) != 2 {
+		err = errors.New(fmt.Sprint("could not find screen size components ", len(screenSizeParts), " in ", parts[0]))
+	} else {
+		clientInfo = NewClientInfo()
+		clientInfo.pixelRatio, _ = strconv.ParseFloat(parts[1], 32)
+		clientInfo.screenWidth, _ = strconv.ParseInt(screenSizeParts[0], 0, 32)
+		clientInfo.screenHeight, _ = strconv.ParseInt(screenSizeParts[1], 0, 32)
+	}
+	return clientInfo, err
 }
 
 func clampScreenWidthToGrid(screenWidth int64, breakPoints []int64) int64 {

@@ -1,3 +1,5 @@
+[![Travis CI](https://travis-ci.org/foomo/gofoomo.svg?branch=master)](https://travis-ci.org/foomo/gofoomo)
+
 # gofoomo
 
 Gofoomo lets you use Go in your foomo project. It also lets you use php in your Go project.
@@ -28,7 +30,32 @@ Gofoomo lets you intercept and implement calls to foomo json rpc services. In ad
 
 ## Access foomo configurations
 
-Gofoomo gives you access to foomo configurations from Go. Hint: if your php configuration objects are well annotated they are essentially value objects and corresponding structs can easily be generated with Foomo.Go. 
+Gofoomo gives you access to foomo configurations from Go. Hint: if your php configuration objects are well annotated they are essentially value objects and corresponding structs can easily be generated with Foomo.Go.
+
+## foomo-bert
+
+Is a command line utility, that helps you with the setup of foomo installations.
+
+```bash
+go install github.com/foomo/gofoomo/foomo-bert
+foomo-bert -help
+usage: foomo-bert <command>
+foomo-bert prepare :
+  -dir string
+    	path/to/your/foomo/root
+  -run-mode string
+    	foomo run mode test | development | production
+foomo-bert reset :
+  -addr string
+    	address of the foomo server
+  -dir string
+    	path/to/your/foomo/root
+  -main-module string
+    	name of main module (default "Foomo")
+  -run-mode string
+    	foomo run mode test | development | production
+
+```
 
 ## More to come, but not much more
 

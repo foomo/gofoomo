@@ -2,17 +2,18 @@ package handler
 
 import (
 	"encoding/json"
-	"github.com/foomo/gofoomo/proxy/utils"
-	"github.com/foomo/gofoomo/rpc"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"reflect"
 	"strings"
+
+	"github.com/foomo/gofoomo/proxy/utils"
+	"github.com/foomo/gofoomo/rpc"
 )
 
-// This handler helps you to hijack foomo rpc services. Actually it is even
+// RPC helps you to hijack foomo rpc services. Actually it is even
 // better, you can hijack them method by method.
 //
 // 	f := gofoomo.NewFoomo("/var/www/myApp", "test")
@@ -27,6 +28,7 @@ type RPC struct {
 	serviceObject interface{}
 }
 
+// NewRPC rpc constructor, path is the path in the url, that you intend to hijack
 func NewRPC(serviceObject interface{}, path string) *RPC {
 	rpc := new(RPC)
 	rpc.path = path
@@ -42,9 +44,8 @@ func (r *RPC) getMethodFromPath(path string) string {
 	parts := strings.Split(r.getApplicationPath(path), "/")
 	if len(parts) > 0 {
 		return strings.ToUpper(parts[0][0:1]) + parts[0][1:]
-	} else {
-		return ""
 	}
+	return ""
 }
 
 func (r *RPC) handlesMethod(methodName string) bool {
@@ -55,6 +56,7 @@ func (r *RPC) handlesPath(path string) bool {
 	return strings.HasPrefix(path, r.path) && r.handlesMethod(r.getMethodFromPath(path))
 }
 
+// HandlesRequest implementation of request handler interface
 func (r *RPC) HandlesRequest(incomingRequest *http.Request) bool {
 	return incomingRequest.Method == "POST" && r.handlesPath(incomingRequest.URL.Path)
 }
@@ -93,9 +95,8 @@ func extractPostData(incomingRequest *http.Request) map[string]interface{} {
 	}
 	if len(body) > 0 {
 		return jsonDecode(body).(map[string]interface{})
-	} else {
-		return make(map[string]interface{})
 	}
+	return make(map[string]interface{})
 }
 
 func jsonDecode(jsonData []byte) (data interface{}) {

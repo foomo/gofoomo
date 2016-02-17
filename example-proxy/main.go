@@ -13,7 +13,7 @@ var flagConfig = flag.String("config", "", "config file")
 func main() {
 	fmt.Println("I am a little demo program")
 	flag.Parse()
-	proxyServer, err := proxy.NewProxyServerWithConfig(*flagConfig)
+	proxyServer, err := proxy.NewServerWithConfig(*flagConfig)
 	if err != nil {
 		log.Fatal(err.Error())
 	}

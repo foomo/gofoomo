@@ -6,7 +6,7 @@ import (
 
 func TestReadFoomoMediaClientInfo(t *testing.T) {
 	// 2560x1440@0.8999999761581421
-	info, err := ReadFoomoMediaClientInfo("2560x1440@0.8999999761581421")
+	info, err := readFoomoMediaClientInfo("2560x1440@0.8999999761581421")
 	if err != nil {
 		t.Log("parse error", err)
 		t.Fail()
@@ -28,11 +28,11 @@ func TestClampScreenWidthToGrid(t *testing.T) {
 			t.Error("expected", expected, "actual", actual)
 		}
 	}
-	assertSize(t, 320, ClampScreenWidthToGrid(298, breakPoints))
-	assertSize(t, 768, ClampScreenWidthToGrid(321, breakPoints))
-	assertSize(t, 768, ClampScreenWidthToGrid(766, breakPoints))
-	assertSize(t, 1024, ClampScreenWidthToGrid(1024, breakPoints))
-	assertSize(t, 1440, ClampScreenWidthToGrid(1440, breakPoints))
-	assertSize(t, 1440, ClampScreenWidthToGrid(1441, breakPoints))
-	assertSize(t, 1440, ClampScreenWidthToGrid(10000, breakPoints))
+	assertSize(t, 320, clampScreenWidthToGrid(298, breakPoints))
+	assertSize(t, 768, clampScreenWidthToGrid(321, breakPoints))
+	assertSize(t, 768, clampScreenWidthToGrid(766, breakPoints))
+	assertSize(t, 1024, clampScreenWidthToGrid(1024, breakPoints))
+	assertSize(t, 1440, clampScreenWidthToGrid(1440, breakPoints))
+	assertSize(t, 1440, clampScreenWidthToGrid(1441, breakPoints))
+	assertSize(t, 1440, clampScreenWidthToGrid(10000, breakPoints))
 }

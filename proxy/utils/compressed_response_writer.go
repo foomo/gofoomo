@@ -2,16 +2,16 @@ package utils
 
 import (
 	"compress/gzip"
-	//"io"
 	"net/http"
-	//"strings"
 )
 
+// CompressedResponseWriter helper to write compressed responses
 type CompressedResponseWriter struct {
 	responseWriter http.ResponseWriter
 	gz             *gzip.Writer
 }
 
+// NewCompressedResponseWriter constructor
 func NewCompressedResponseWriter(responseWriter http.ResponseWriter) *CompressedResponseWriter {
 	crw := &CompressedResponseWriter{
 		responseWriter: responseWriter,
@@ -45,6 +45,7 @@ func (crw *CompressedResponseWriter) WriteHeader(code int) {
 	crw.responseWriter.WriteHeader(code)
 }
 
+// Close me please
 func (crw *CompressedResponseWriter) Close() {
 	crw.gz.Close()
 }

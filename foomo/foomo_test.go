@@ -1,23 +1,22 @@
 package foomo
 
 import (
-	"strings"
+	"os"
 	"testing"
 )
 
-func TestSetBasicAuthForUserInBasicAuthFileContents(t *testing.T) {
-	ba := "foo:bar\ntest:gone\nhansi:toll"
-	newBa := setBasicAuthForUserInBasicAuthFileContents(ba, "test", "test")
-	if len(strings.Split(newBa, "\n")) != 3 {
-		t.Fatal("wrong line count")
-	}
-}
-
 func getTestFoomoForFSStuff() *Foomo {
-	f, _ := makeFoomo("/var/www/foomo", "test", "http://test.foomo", false)
+	tempDir := os.TempDir()
+	f, err := BareFoomo(tempDir[0:len(tempDir)-1], "test")
+	if err != nil {
+		panic(err)
+	}
 	return f
 }
 
+func assertTempPath(t *testing.T, topic string, expected string, actual string) {
+	assertStringsEqual(t, topic, os.TempDir()+expected, actual)
+}
 func assertStringsEqual(t *testing.T, topic string, expected string, actual string) {
 	if actual != expected {
 		t.Fatal(topic, "actual: ", actual, " != expected: ", expected)
@@ -26,22 +25,42 @@ func assertStringsEqual(t *testing.T, topic string, expected string, actual stri
 
 func TestGetVarDir(t *testing.T) {
 	actual := getTestFoomoForFSStuff().GetVarDir()
-	expected := "/var/www/foomo/var/test"
-	assertStringsEqual(t, "var dir", expected, actual)
+	expected := "var/test"
+	assertTempPath(t, "var dir", expected, actual)
 }
 
 func TestGetModuleDir(t *testing.T) {
-	assertStringsEqual(t, "module dir", "/var/www/foomo/modules/Foomo/htdocs", getTestFoomoForFSStuff().GetModuleDir("Foomo", "htdocs"))
+	assertTempPath(
+		t,
+		"module dir",
+		"modules/Foomo/htdocs",
+		getTestFoomoForFSStuff().GetModuleDir("Foomo", "htdocs"),
+	)
 }
 
 func TestGetModuleHtdocsDir(t *testing.T) {
-	assertStringsEqual(t, "module htdocs dir", "/var/www/foomo/modules/Foomo/htdocs", getTestFoomoForFSStuff().GetModuleHtdocsDir("Foomo"))
+	assertTempPath(
+		t,
+		"module htdocs dir",
+		"modules/Foomo/htdocs",
+		getTestFoomoForFSStuff().GetModuleHtdocsDir("Foomo"),
+	)
 }
 
 func TestGetModuleHtdocsVarDir(t *testing.T) {
-	assertStringsEqual(t, "module htdocs var dir", "/var/www/foomo/var/test/htdocs/modulesVar/Foomo", getTestFoomoForFSStuff().GetModuleHtdocsVarDir("Foomo"))
+	assertTempPath(
+		t,
+		"module htdocs var dir",
+		"var/test/htdocs/modulesVar/Foomo",
+		getTestFoomoForFSStuff().GetModuleHtdocsVarDir("Foomo"),
+	)
 }
 
 func TestGetBasicAuthFilename(t *testing.T) {
-	assertStringsEqual(t, "basic auth file", "/var/www/foomo/var/test/basicAuth/sepp", getTestFoomoForFSStuff().GetBasicAuthFilename("sepp"))
+	assertTempPath(
+		t,
+		"basic auth file",
+		"var/test/basicAuth/sepp",
+		getTestFoomoForFSStuff().GetBasicAuthFilename("sepp"),
+	)
 }
