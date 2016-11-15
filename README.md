@@ -13,12 +13,12 @@ Go is a much younger and cleaner stack than LAMP.
 * Serve static files without bugging your prefork apache
 * Keep slow connections away from your php processes (not implemented yet)
 * Hijack foomo json rpc services methods
-* Your code is also running the server, this puts you in a place, where	you can solve problems, that you can not solve in php
+  * Your code is also running the server, this puts you in a place, whereyou can solve problems, that you can not solve in php
 * Go´s runtime model is pretty much the opposite of the php runtime model
-	* all requests vs one request per lifetime
-	* shared memory vs process and memory isolation
-	* one bug to kill them all vs one bug kills one request
-	* hard, but fast vs easy but slow
+  * all requests vs one request per lifetime
+  * shared memory vs process and memory isolation
+  * one bug to kill them all vs one bug kills one request
+  * hard, but fast vs easy but slow
 
 ## Sitting in front of your foomo LAMP app with Go
 
@@ -60,3 +60,17 @@ foomo-bert reset :
 ## More to come, but not much more
 
 We are going to add features, as we are going to need them. The focus is to have a simple interface between foomo and Go.
+
+## A little more
+
+This example shows how to access a remote server to read configs.
+
+```Go
+rc, err := core.NewRemoteClient("https://user:password@host.com")
+if err != nil {
+	log.Fatal("could not start remote client", err)
+}
+c := &MyConf{}
+configErr := rc.GetConfig(c, "My.Module", "My.conf", "")
+fmt.Println(configErr, c)
+```

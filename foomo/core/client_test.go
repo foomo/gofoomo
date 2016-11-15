@@ -64,7 +64,7 @@ func getTestFoomo() *foomo.Foomo {
 
 func TestGet(t *testing.T) {
 	f := getTestFoomo()
-	data, err := get(f, "config", "Foomo", "Foomo.core")
+	data, err := get(f.GetURLWithCredentialsForDefaultBasicAuthDomain(), "config", "Foomo", "Foomo.core")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,6 +76,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestGetJSON(t *testing.T) {
+
 	f := getTestFoomo()
 	config := new(CoreConfig)
 	err := GetJSON(f, config, "config", "Foomo", "Foomo.core")

@@ -71,8 +71,8 @@ func (proxy *Proxy) serveHTTP(w http.ResponseWriter, incomingRequest *http.Reque
 	}
 	incomingRequest.Host = proxy.foomo.URL.Host
 	// incomingRequest.URL.Opaque = incomingRequest.RequestURI + incomingRequest.
-	proxy.ReverseProxy.ServeHTTP(w, incomingRequest)
 
+	proxy.ReverseProxy.ServeHTTP(w, incomingRequest)
 	for _, listener := range proxy.listeners {
 		listener.ListenServeHTTPDone(w, incomingRequest)
 	}
