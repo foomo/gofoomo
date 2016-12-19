@@ -114,9 +114,17 @@ func NewServer(config *Config) (p *Server, err error) {
 	return p, nil
 }
 
+func (p *Server) ListendAndServe() error {
+	return p.listenAndServeWithHandler(p.Proxy)
+}
+
+func (p *Server) ListenAndServeWithHandler(handler http.Handler) error {
+	return p.listenAndServeWithHandler(handler)
+}
+
 // ListenAndServe until things go bad, depending upon configuration this will\
 // listen to http and https requests
-func (p *Server) ListenAndServe() error {
+func (p *Server) listenAndServeWithHandler(handler http.Handler) error {
 	c := p.Config.Server
 	errorChan := make(chan error)
 	startedHTTPS := false
