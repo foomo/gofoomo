@@ -134,7 +134,7 @@ func (p *Server) listenAndServeWithHandler(handler http.Handler) error {
 		go func() {
 			tlsServer := &http.Server{
 				Addr:      c.TLS.Address,
-				Handler:   p.Proxy,
+				Handler:   handler,
 				TLSConfig: p.TLSConfig,
 			}
 			errorChan <- tlsServer.ListenAndServeTLS(c.TLS.CertFile, c.TLS.KeyFile)
@@ -144,7 +144,7 @@ func (p *Server) listenAndServeWithHandler(handler http.Handler) error {
 	if len(c.Address) > 0 {
 		log.Println("listening for http on", c.Address)
 		go func() {
-			errorChan <- http.ListenAndServe(c.Address, p.Proxy)
+			errorChan <- http.ListenAndServe(c.Address, handler)
 		}()
 		startedHTTP = true
 	}
