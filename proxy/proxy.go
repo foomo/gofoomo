@@ -114,7 +114,7 @@ func NewServer(config *Config) (p *Server, err error) {
 	return p, nil
 }
 
-func (p *Server) ListendAndServe() error {
+func (p *Server) ListenAndServe() error {
 	return p.listenAndServeWithHandler(p.Proxy)
 }
 
