@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -16,12 +17,18 @@ type Auth struct {
 	Realm  string
 }
 
-// TLS proxy tls config vo
-type TLS struct {
-	Mode     tlsconfig.TLSModeServer
-	Address  string
+type Certificate struct {
 	CertFile string
 	KeyFile  string
+}
+
+// TLS proxy tls config vo
+type TLS struct {
+	Mode         tlsconfig.TLSModeServer
+	Address      string
+	CertFile     string
+	KeyFile      string
+	Certificates []Certificate
 }
 
 // Config proxy configuration
@@ -43,6 +50,44 @@ type Config struct {
 	}
 	// this is for you and your handlers
 	AppOptions map[string]string
+}
+
+func (c *Config) getCertificates() (certificates []tls.Certificate, err error) {
+	if !c.hasCertificates() {
+		err = errors.New("i do not have any certificates")
+		return
+	}
+	if (c.Server.TLS.CertFile != "" || c.Server.TLS.KeyFile != "") && len(c.Server.TLS.Certificates) > 0 {
+		err = errors.New("you can not mix .Certificates and .CertFile and .KeyFile - choose one")
+		return
+	}
+
+	// just one - default config
+	if c.Server.TLS.CertFile != "" && c.Server.TLS.KeyFile != "" {
+		certificate, certificateErr := tls.LoadX509KeyPair(c.Server.TLS.CertFile, c.Server.TLS.KeyFile)
+		if certificateErr != nil {
+			err = certificateErr
+			return
+		}
+		certificates = append(certificates, certificate)
+		return
+	}
+
+	// multiple certs for SNI - let us loop
+	certificates = make([]tls.Certificate, len(c.Server.TLS.Certificates))
+	for i, certConf := range c.Server.TLS.Certificates {
+		certificate, certificateErr := tls.LoadX509KeyPair(certConf.CertFile, certConf.KeyFile)
+		if certificateErr != nil {
+			err = certificateErr
+			return
+		}
+		certificates[i] = certificate
+	}
+	return
+}
+
+func (c *Config) hasCertificates() bool {
+	return (c.Server.TLS.CertFile != "" && c.Server.TLS.KeyFile != "") || len(c.Server.TLS.Certificates) > 0
 }
 
 // ReadConfig from a file

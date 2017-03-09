@@ -111,6 +111,7 @@ func NewServer(config *Config) (p *Server, err error) {
 	p.Proxy = NewProxy(p.Foomo)
 	p.Proxy.auth = config.Server.Auth
 	p.TLSConfig = tlsconfig.NewServerTLSConfig(p.Config.Server.TLS.Mode)
+
 	return p, nil
 }
 
@@ -129,15 +130,21 @@ func (p *Server) listenAndServeWithHandler(handler http.Handler) error {
 	errorChan := make(chan error)
 	startedHTTPS := false
 	startedHTTP := false
-	if len(c.TLS.CertFile) > 0 && len(c.TLS.KeyFile) > 0 {
+	if p.Config.hasCertificates() {
 		log.Println("listening for https on", c.TLS.Address)
+		certificates, certificatesErr := p.Config.getCertificates()
+		if certificatesErr != nil {
+			return errors.New("could not load certificates: " + certificatesErr.Error())
+		}
+		p.TLSConfig.Certificates = certificates
+		p.TLSConfig.BuildNameToCertificate()
 		go func() {
 			tlsServer := &http.Server{
 				Addr:      c.TLS.Address,
 				Handler:   handler,
 				TLSConfig: p.TLSConfig,
 			}
-			errorChan <- tlsServer.ListenAndServeTLS(c.TLS.CertFile, c.TLS.KeyFile)
+			errorChan <- tlsServer.ListenAndServeTLS("", "")
 		}()
 		startedHTTPS = true
 	}

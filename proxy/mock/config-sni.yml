@@ -1,0 +1,21 @@
+server:
+  address: 0.0.0.0:8080
+  tls:
+    address: 0.0.0.0:8443
+    certificates:
+      - 
+        certfile: test-certs/localhorst_cert.pem
+        keyfile: test-certs/localhorst_key.pem
+      - 
+        certfile: test-certs/localhost_cert.pem
+        keyfile: test-certs/localhost_key.pem
+      - 
+        certfile: test-certs/127_0_0_1_cert.pem
+        keyfile: test-certs/127_0_0_1_key.pem
+
+foomo:
+  runmode: test
+  dir: foomo
+  address: http://localhost
+appoptions:
+  foo: Bar
