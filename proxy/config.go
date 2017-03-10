@@ -25,6 +25,7 @@ type Certificate struct {
 // TLS proxy tls config vo
 type TLS struct {
 	Mode         tlsconfig.TLSModeServer
+	ForceTLS     bool
 	Address      string
 	CertFile     string
 	KeyFile      string
