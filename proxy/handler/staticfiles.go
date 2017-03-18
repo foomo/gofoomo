@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"mime"
 	"net/http"
 	"os"
 	"strings"
@@ -76,7 +77,6 @@ func (files *StaticFiles) ServeHTTP(w http.ResponseWriter, incomingRequest *http
 	panicOnErr(err)
 	//const TimeFormat = "Mon, 02 Jan 2006 15:04:05 GMT"
 	w.Header().Set("Expires", time.Now().Add(time.Hour*24*365).Format(http.TimeFormat))
-	// should we really compress all static file types ?!
 	if compress && strings.Contains(incomingRequest.Header.Get("Accept-Encoding"), "gzip") {
 		w.Header().Set("Content-Encoding", "gzip")
 		crw := utils.NewCompressedResponseWriter(w)
@@ -86,24 +86,19 @@ func (files *StaticFiles) ServeHTTP(w http.ResponseWriter, incomingRequest *http
 	http.ServeContent(w, incomingRequest, f.Name(), fileInfo.ModTime(), f)
 }
 
-func getContentType(path string) (string, bool) {
-	if strings.HasSuffix(path, ".png") {
-		return "image/png", false
-	} else if strings.HasSuffix(path, ".jpg") {
-		return "image/jpeg", false
-	} else if strings.HasSuffix(path, ".jpeg") {
-		return "image/jpeg", false
-	} else if strings.HasSuffix(path, ".gif") {
-		return "image/gif", false
-	} else if strings.HasSuffix(path, ".css") {
-		return "text/css", true
-	} else if strings.HasSuffix(path, ".js") {
-		return "application/javascript", true
-	} else if strings.HasSuffix(path, ".html") {
-		return "text/html", true
-	} else if strings.HasSuffix(path, ".") {
-		return "", false
-	} else {
-		return "octet/stream", false
+func getContentType(path string) (mimeType string, compress bool) {
+	parts := strings.Split(path, ".")
+	suffix := parts[len(parts)-1]
+
+	compress = false
+
+	switch suffix {
+	case "css", "js", "html", "htm", "ttf", "eot", "svg", "txt", "csv":
+		compress = true
 	}
+	mimeType = mime.TypeByExtension("." + suffix)
+	if mimeType == "" {
+		mimeType = "application/octet-stream"
+	}
+	return
 }
