@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/foomo/gofoomo/foomo"
@@ -70,23 +71,28 @@ func (i *ImageRequest) execute(cache *Cache) error {
 	return result.Error
 }
 
+type directory struct {
+	sync.RWMutex
+	m map[string]*ImageInfo
+}
+
 // Cache image cache
 type Cache struct {
-	Directory              map[string]*ImageInfo
+	directory              directory
 	Foomo                  *foomo.Foomo
 	foomoSessionCookie     *http.Cookie
 	foomoSessionCookieName string
 	client                 *http.Client
 	RequestChannel         chan *ImageRequest
-
-	//doneChannel        chan *ImageRequest
 }
 
 // NewCache cache constructor
 func NewCache(f *foomo.Foomo) *Cache {
 	c := new(Cache)
 	c.Foomo = f
-	c.Directory = make(map[string]*ImageInfo)
+	c.directory = directory{
+		m: map[string]*ImageInfo{},
+	}
 	c.client = http.DefaultClient
 	c.foomoSessionCookieName = getFoomoSessionCookieName(f)
 	c.RequestChannel = make(chan *ImageRequest)
@@ -134,15 +140,18 @@ func (c *Cache) runLoop() {
 
 // Get get image with the given breakpoints
 func (c *Cache) Get(request *http.Request, breakPoints []int64) (info *ImageInfo, err error) {
-
 	cookie := getFoomoMediaClientInfoCookie(request.Cookies(), breakPoints)
 	key := cookie.String() + ":" + request.URL.Path
-	info, ok := c.Directory[key]
+	c.directory.RLock()
+	info, ok := c.directory.m[key]
+	c.directory.RUnlock()
 	if ok && time.Now().Unix() > info.Expires {
 		log.Println("that image expired - getting a new one", info.Expires, time.Now())
 		ok = false
 		info = nil
-		delete(c.Directory, key)
+		c.directory.Lock()
+		delete(c.directory.m, key)
+		c.directory.Unlock()
 	}
 	if ok == false {
 		imageRequest := NewImageRequest(key, request, cookie)
@@ -154,7 +163,9 @@ func (c *Cache) Get(request *http.Request, breakPoints []int64) (info *ImageInfo
 		if len(info.Etag) > 0 {
 			info.Filename = c.Foomo.GetModuleCacheDir("Foomo.Media") + "/img-" + info.Etag
 			if fileExists(info.Filename) {
-				c.Directory[key] = info
+				c.directory.Lock()
+				c.directory.m[key] = info
+				c.directory.Unlock()
 			} else {
 				return nil, err
 			}
