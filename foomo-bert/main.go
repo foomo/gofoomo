@@ -39,7 +39,7 @@ func foomoFlagsetReset() (fs *flag.FlagSet, f *foomoFlagsReset) {
 	f.runMode = getFlagRunMode(fs)
 	f.dir = getFlagDir(fs)
 	f.address = fs.String("addr", "", "address of the foomo server")
-	f.mainModule = fs.String("main-module", "Foomo", "name of main module")
+	f.mainModule = fs.String("main-module", "", "name of main module")
 	return fs, f
 }
 
@@ -76,7 +76,12 @@ func validateFlagsReset(f *foomoFlagsReset) (err error) {
 	flagOrEnv(fp.dir, envNameDir)
 	flagOrEnv(fp.runMode, envNameRunMode)
 	flagOrEnv(f.address, envNameAddr)
+	flagOrEnv(f.mainModule, envNameMainModule)
 
+	if *f.mainModule == "" {
+		mainModule := "Foomo"
+		f.mainModule = &mainModule
+	}
 	prepareErr := validateFlagsPrepare(fp)
 	if prepareErr != nil {
 		return prepareErr
