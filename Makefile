@@ -11,3 +11,5 @@ build-arch: clean
 	GOOS=darwin GOARCH=amd64 go build -o bin/foomo-bert-darwin-amd64 foomo-bert/main.go
 test:
 	go test -v github.com/foomo/gofoomo
+docker: build-arch
+	docker build --tag docker-registry.bestbytes.net/foomo-bert:latest .

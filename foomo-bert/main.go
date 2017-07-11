@@ -52,11 +52,31 @@ func foomoFlagsetPrepare() (fs *flag.FlagSet, f *foomoFlagsPrepare) {
 	return fs, f
 }
 
+const (
+	envNameDir        = "FOOMO_BERT_DIR"
+	envNameRunMode    = "FOOMO_BERT_RUN_MODE"
+	envNameMainModule = "FOOMO_BERT_MAIN_MODULE"
+	envNameAddr       = "FOOMO_BERT_ADDR"
+)
+
+func flagOrEnv(flagValue *string, env string) {
+	if *flagValue != "" {
+		return
+	}
+	e := os.Getenv(env)
+	*flagValue = e
+}
+
 func validateFlagsReset(f *foomoFlagsReset) (err error) {
 	fp := &foomoFlagsPrepare{
 		runMode: f.runMode,
 		dir:     f.dir,
 	}
+
+	flagOrEnv(fp.dir, envNameDir)
+	flagOrEnv(fp.runMode, envNameRunMode)
+	flagOrEnv(f.address, envNameAddr)
+
 	prepareErr := validateFlagsPrepare(fp)
 	if prepareErr != nil {
 		return prepareErr
@@ -82,6 +102,8 @@ func validateFlagsReset(f *foomoFlagsReset) (err error) {
 }
 
 func validateFlagsPrepare(f *foomoFlagsPrepare) (err error) {
+	flagOrEnv(f.dir, envNameDir)
+	flagOrEnv(f.runMode, envNameRunMode)
 	// run mode
 	switch *f.runMode {
 	case foomo.RunModeTest, foomo.RunModeProduction, foomo.RunModeDevelopment:
