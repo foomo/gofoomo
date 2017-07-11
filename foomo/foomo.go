@@ -79,6 +79,14 @@ func makeFoomo(foomoDir string, runMode string, address string, init bool) (f *F
 }
 
 func (f *Foomo) setupBasicAuthCredentials() error {
+	if f.URL.User != nil {
+		f.basicAuthCredentials.user = f.URL.User.Username()
+		password, passwordOK := f.URL.User.Password()
+		if passwordOK {
+			f.basicAuthCredentials.password = password
+			return nil
+		}
+	}
 	f.basicAuthCredentials.user = "gofoomo"
 	f.basicAuthCredentials.password = makeToken(50)
 	return htpasswd.SetPassword(f.GetBasicAuthFilename("default"), f.basicAuthCredentials.user, f.basicAuthCredentials.password, htpasswd.HashBCrypt)
