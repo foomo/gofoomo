@@ -57,7 +57,6 @@ func readFoomoMediaClientInfo(cookie string) (clientInfo *ClientInfo, err error)
 
 func clampScreenWidthToGrid(screenWidth int64, breakPoints []int64) int64 {
 	// the last breakpoint
-	log.Println("clampScreenWidthToGrid", screenWidth, breakPoints)
 	distance := breakPoints[len(breakPoints)-1]
 	clampedValue := distance
 	for _, breakPoint := range breakPoints {
