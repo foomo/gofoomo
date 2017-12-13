@@ -9,6 +9,7 @@ import (
 
 	"github.com/foomo/gofoomo/foomo"
 	"github.com/foomo/tlsconfig"
+	"time"
 )
 
 // Handler proxy handler
@@ -22,6 +23,14 @@ type Listener interface {
 	ListenServeHTTPStart(w http.ResponseWriter, incomingRequest *http.Request) http.ResponseWriter
 	ListenServeHTTPDone(w http.ResponseWriter, incomingRequest *http.Request)
 }
+
+// Based on values from https://blog.cloudflare.com/the-complete-guide-to-golang-net-http-timeouts/
+// And https://blog.cloudflare.com/exposing-go-on-the-internet/
+const (
+	READ_TIMEOUT  = 5 * time.Second
+	WRITE_TIMEOUT = 10 * time.Second
+	IDLE_TIMEOUT  = 120 * time.Second
+)
 
 // Proxy foomo proxy
 type Proxy struct {
@@ -140,9 +149,12 @@ func (p *Server) listenAndServeWithHandler(handler http.Handler) error {
 		p.TLSConfig.BuildNameToCertificate()
 		go func() {
 			tlsServer := &http.Server{
-				Addr:      c.TLS.Address,
-				Handler:   handler,
-				TLSConfig: p.TLSConfig,
+				ReadTimeout:  READ_TIMEOUT,
+				WriteTimeout: WRITE_TIMEOUT,
+				IdleTimeout:  IDLE_TIMEOUT,
+				Addr:         c.TLS.Address,
+				Handler:      handler,
+				TLSConfig:    p.TLSConfig,
 			}
 			errorChan <- tlsServer.ListenAndServeTLS("", "")
 		}()
