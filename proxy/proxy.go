@@ -27,8 +27,8 @@ type Listener interface {
 // Based on values from https://blog.cloudflare.com/the-complete-guide-to-golang-net-http-timeouts/
 // And https://blog.cloudflare.com/exposing-go-on-the-internet/
 const (
-	READ_TIMEOUT  = 5 * time.Second
-	WRITE_TIMEOUT = 10 * time.Second
+	READ_TIMEOUT  = 30 * time.Second
+	WRITE_TIMEOUT = 30 * time.Second
 	IDLE_TIMEOUT  = 120 * time.Second
 )
 
