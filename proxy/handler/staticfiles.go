@@ -4,6 +4,7 @@ import (
 	"mime"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -49,15 +50,7 @@ func fileExists(filename string) bool {
 	return err == nil
 }
 
-func panicOnErr(err error) {
-	if err != nil {
-		panic(err)
-	}
-
-}
-
 func (files *StaticFiles) ServeHTTP(w http.ResponseWriter, incomingRequest *http.Request) {
-
 	parts := strings.Split(incomingRequest.URL.Path, "/")
 	path := strings.Join(parts[4:], "/")
 	moduleNameParts := strings.Split(parts[3], "-")
@@ -68,14 +61,39 @@ func (files *StaticFiles) ServeHTTP(w http.ResponseWriter, incomingRequest *http
 	} else {
 		moduleDir = files.foomo.GetModuleHtdocsVarDir(moduleName)
 	}
-	f, err := os.Open(moduleDir + "/" + path)
-	panicOnErr(err)
+	fullName := filepath.Join(moduleDir, path)
+	// validate path
+	absPath, errAbs := filepath.Abs(fullName)
+	if errAbs != nil {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	if !strings.HasPrefix(absPath, moduleDir) {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	// check file
+	fileInfo, errStat := os.Stat(fullName)
+	if errStat != nil {
+		switch true {
+		case os.IsNotExist(errStat):
+			http.Error(w, "not found", http.StatusNotFound)
+		case os.IsPermission(errStat):
+			http.Error(w, "forbidden", http.StatusForbidden)
+		default:
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+		}
+		return
+	}
+	// open it
+	f, errOpen := os.Open(fullName)
 	defer f.Close()
+	if errOpen != nil {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	// compression support
 	_, compress := getContentType(path)
-	//w.Header().Set("Content-Type", mime)
-	fileInfo, err := f.Stat()
-	panicOnErr(err)
-	//const TimeFormat = "Mon, 02 Jan 2006 15:04:05 GMT"
 	w.Header().Set("Expires", time.Now().Add(time.Hour*24*365).Format(http.TimeFormat))
 	if compress && strings.Contains(incomingRequest.Header.Get("Accept-Encoding"), "gzip") {
 		w.Header().Set("Content-Encoding", "gzip")
@@ -83,6 +101,7 @@ func (files *StaticFiles) ServeHTTP(w http.ResponseWriter, incomingRequest *http
 		defer crw.Close()
 		w = crw
 	}
+	// passing it on to std library
 	http.ServeContent(w, incomingRequest, f.Name(), fileInfo.ModTime(), f)
 }
 

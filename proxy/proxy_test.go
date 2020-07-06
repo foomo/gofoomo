@@ -65,6 +65,21 @@ func TestSNI(t *testing.T) {
 	if responseErr != nil {
 		t.Fatal("failed to get", responseErr)
 	}
+
+	response404, response404Err := c.Get("https://localhost:8443/foomo/modulesVar/Foomo.JS/test-is-not-here")
+	if response404Err != nil {
+		t.Fatal("failed to get", response404Err)
+	}
+	if response404.StatusCode != http.StatusNotFound {
+		t.Fatal("unexpected status code:", response404.StatusCode)
+	}
+	responsePathAttack, responsePathAttackErr := c.Get("https://localhost:8443/foomo/modulesVar/Foomo.JS/../../../../etc/passwd")
+	if responsePathAttackErr != nil {
+		t.Fatal("failed to get", responsePathAttackErr)
+	}
+	if responsePathAttack.StatusCode != http.StatusForbidden {
+		t.Fatal("unexpected status code:", response404.StatusCode)
+	}
 	if response.TLS.PeerCertificates[0].Subject.CommonName != "localhost" {
 		t.Fatal("SNI Fail, unexpected common name in first peer certificate common name:", response.TLS.PeerCertificates[0].Subject.CommonName)
 	}
